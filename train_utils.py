@@ -1,5 +1,5 @@
 import numpy as np
-import collections
+import collections, os, json
 from attr_rel_dict import *
 
 # need a huge array
@@ -34,31 +34,28 @@ def get_seq_scan_input(plan_dict):
     else:
         rel_attr_vec = get_rel_attr_one_hot(plan_dict['Relation Name'],
                                             plan_dict['Filter'])
-    return rel_vec + rel_attr_vec
+    return get_basics(plan_dict) + rel_vec + rel_attr_vec
 
 def get_hash_input(plan_dict):
-    return [plan_dict['Hash Buckets']]
+    return get_basics(plan_dict) + [plan_dict['Hash Buckets']]
 
 def get_join_input(plan_dict):
     type_vec = [0] * len(join_types)
     type_vec[join_types.index(plan_dict['Join Type']).lower()] = 1
     par_rel_vec = [0] * len(parent_rel_types)
     par_rel_vec[parent_rel_types.index(plan_dict['Parent Relationship'].lower())] = 1
-    return type_vec + par_rel_vec
+    return get_basics(plan_dict) + type_vec + par_rel_vec
 
 def get_sort_input(plan_dict):
     sort_meth = [0] * len(sort_algos)
     sort_meth[sort_algos.index(plan_dict['Sort Method'].lower())] = 1
-    return sort_meth
-
-def get_hash_input(plan_dict):
-    return [plan_dict['Hash Buckets']]
+    return get_basics(plan_dict) +  sort_meth
 
 def get_aggreg_input(plan_dict):
     strat_vec = [0] * len(aggreg_strats)
     strat_vec[aggreg_strats.index(plan_dict['Strategy'].lower())] = 1
     partial_mode_vec = [0] if plan_dict['Parallel Aware'] == 'false' else [1]
-    return strat_vec + partial_mode_vec
+    return get_basics(plan_dict) + strat_vec + partial_mode_vec
 
 GET_INPUT = \
 {
@@ -94,7 +91,7 @@ def get_all_plans(fname):
     return jss
 
 def create_dataset(data_dir):
-    assert('query_by_temp/' == data_dir[-14:])
+    assert('res_by_temp/' == data_dir[-14:])
     fnames = os.listdir(data_dir)
     data = []
     for fname in fnames:
@@ -126,12 +123,12 @@ def get_input(data): # Helper for sample_data
         #if jss['Node Type'] == 'Seq Scan':
         #    print(jss['Plans'])
         for i in range(len(data[0]['Plans'])):
-            child_plan_dict = set_input([jss['Plans'][i] for jss in data])
+            child_plan_dict = get_input([jss['Plans'][i] for jss in data])
             child_plan_lst.append(child_plan_dict)
 
-    new_samp_dict["feat_vec"] = np.array(feat_vec).astype(float)
+    new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
     new_samp_dict["children_plan"] = child_plan_lst
-    new_samp_dict["total_time"] = np.array(total_time).astype(float)
+    new_samp_dict["total_time"] = np.array(total_time).astype(np.float32)
     if 'Subplan Name' in data[0]:
         new_samp_dict['is_subplan'] = True
     else:

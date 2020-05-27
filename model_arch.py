@@ -12,7 +12,7 @@ from train_utils import *
 
 basic = 3
 # this is from examining the tpch output
-dim_dict = {'Seq Scan': 7, 'Sort': 5 + 32, 'Hash': 4 + 32,
+dim_dict = {'Seq Scan': 27, 'Sort': 5 + 32, 'Hash': 4 + 32,
             'Hash Join': 10 + 32 * 2, 'Merge Join': 10 + 32 * 2,
             'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
             'Subquery Scan': 32 + 3,
@@ -62,11 +62,16 @@ class NeuralUnit(nn.Module):
             dense_block += [nn.Linear(hidden_size, hidden_size), nn.ReLU()]
         dense_block += [nn.Linear(hidden_size, output_size), nn.ReLU()]
 
+        for layer in dense_block:
+          try:
+            nn.init.xavier_uniform(layer.weight)
+          except:
+            pass
         return nn.Sequential(*dense_block)
 
     def forward(self, x):
         """ Forward function """
-        out = self.dense_block(x)  # add skip connections
+        out = self.dense_block(x)  
         return out
 
 ###############################################################################
@@ -85,7 +90,7 @@ class QPPNet():
         self.units = {}
         self.optimizers, self.schedulers = {}, {}
         for operator in dim_dict:
-            self.units[operator] = NeuralUnit(dim_dict[operator]).to(self.device)
+            self.units[operator] = NeuralUnit(operator).to(self.device)
             optimizer = torch.optim.Adam(self.units[operator].parameters(),
                                          opt.lr) #opt.lr
             sc = lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.99)
@@ -93,8 +98,10 @@ class QPPNet():
             self.optimizers[operator] = optimizer
             self.schedulers[operator] = sc
 
+        self.loss_fn = nn.MSELoss()
         # Initialize the global loss accumulator dict
-        self.acc_loss = {operator: [] for operator in dim_dict}
+        self.dummy = torch.zeros(1).to(self.device)
+        self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
         self.curr_losses = {operator: 0 for operator in dim_dict}
 
 
@@ -110,43 +117,53 @@ class QPPNet():
         return output_vec, where 1st col is predicted time
         '''
         input_vec = samp_batch['feat_vec']
+        input_vec = torch.from_numpy(input_vec).to(self.device)
+
         for child_plan_dict in samp_batch['children_plan']:
-            child_output_vec = forward_one_batch(child_plan_dict)
+            child_output_vec = self.forward_oneQ_batch(child_plan_dict)
             if not child_plan_dict['is_subplan']:
-                input_vec = np.concatenate((input_vec, child_output_vec),axis=1)
+                input_vec = torch.cat((input_vec, child_output_vec),axis=1)
                 # first dim is subbatch_size
 
-        output_vec = self.units[samp_batch['node_type']](input_vec.to(self.device))
-        pred_time = output_vec[:, 0] # pred_time assumed to be the first col
-
-        assert(len(pred_time.size) == 1)
-        loss = torch.sum(torch.square(pred_time - samp_batch['total_time']))
-
-        self.acc_loss[samp_batch['node_type']].append(loss)
+        #print(samp_batch['node_type'], input_vec.size())
+        output_vec = self.units[samp_batch['node_type']](input_vec)
+        pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
+        pred_time = torch.mean(pred_time, 1)
+        #print(output_vec, samp_batch['total_time'])
+        
+        loss = self.loss_fn(pred_time, 
+                            torch.from_numpy(samp_batch['total_time']).to(self.device))
+        
+        self.acc_loss[samp_batch['node_type']].append(loss.unsqueeze(0))
         return output_vec
 
     def forward(self):
         # first clear prev computed losses
         del self.acc_loss
-        self.acc_loss = {operator: [] for operator in dim_dict}
+        self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
 
         # # self.input is a list of preprocessed plan_vec_dict
         for samp_dict in self.input:
             _ = self.forward_oneQ_batch(samp_dict)
 
     def backward(self, batch_size):
+        total_loss = torch.zeros(1).to(self.device)
         for operator in self.acc_loss:
-            total_loss = torch.sum(torch.cat(self.acc_loss[operator])) / batch_size
-            self.curr_losses[operator] = total_loss.item()
-            total_loss.backward()
-
+            #print(operator, self.acc_loss[operator])
+            op_loss = torch.sum(torch.cat(self.acc_loss[operator])) / batch_size
+            self.curr_losses[operator] = op_loss.item()
+            total_loss += op_loss
+        print(total_loss)
+        total_loss = torch.sqrt(total_loss)
+        total_loss.backward()
+        
     def optimize_parameters(self, batch_size):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self.forward()
         self.backward(batch_size)
-        for operator in optimizers:
+        for operator in self.optimizers:
             self.optimizers[operator].step()
-            self.schedulers[operators].step()
+            self.schedulers[operator].step()
 
     def get_current_losses(self):
         return self.curr_losses
@@ -156,7 +173,7 @@ class QPPNet():
             save_filename = '%s_net_%s.pth' % (epoch, name)
             save_path = os.path.join(self.save_dir, save_filename)
 
-            if len(self.gpu_ids) > 0 and torch.cuda.is_available():
+            if torch.cuda.is_available():
                 torch.save(unit.module.cpu().state_dict(), save_path)
                 unit.to(self.device)
             else:
