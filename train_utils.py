@@ -10,8 +10,8 @@ num_q = 22
 
 
 def get_basics(plan_dict):
-    return [plan_dict['Plan Width'], plan_dict['Plan Rows'],
-            plan_dict['Total Cost']]
+    return [plan_dict['Plan Width'] / 500, plan_dict['Plan Rows'] / 10,
+            plan_dict['Total Cost'] / 5000]
 
 def get_rel_one_hot(rel_name):
     arr = [0] * num_rel
@@ -128,7 +128,7 @@ def get_input(data): # Helper for sample_data
 
     new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
     new_samp_dict["children_plan"] = child_plan_lst
-    new_samp_dict["total_time"] = np.array(total_time).astype(np.float32)
+    new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / 10
     if 'Subplan Name' in data[0]:
         new_samp_dict['is_subplan'] = True
     else:
@@ -142,8 +142,9 @@ def get_input(data): # Helper for sample_data
 def sample_data(dataset, batch_size):
     # dataset: all queries used in training
     samp = np.random.choice(np.arange(len(dataset)), batch_size, replace=False)
-    samp_group = [[]] * num_q
+    print(samp)
+    samp_group = [[] for _ in range(num_q)]
     for idx in samp:
         samp_group[idx // 32].append(dataset[idx])
 
-    return [get_input(grp) for grp in samp_group]
+    return [get_input(grp) for grp in samp_group if len(grp) != 0]

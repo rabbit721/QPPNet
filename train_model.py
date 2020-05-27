@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 parser.add_argument('-dir', '--save_dir', type=str, default='./saved_model',
                     help='Dir to save model weights (default: ./saved_model)')
 
-parser.add_argument('--lr', type=float, default=1e-3,
+parser.add_argument('--lr', type=float, default=1e-4,
                     help='Learning rate (default: 1e-3)')
 
 parser.add_argument('--batch_size', type=int, default=32,
@@ -20,7 +20,7 @@ parser.add_argument('--batch_size', type=int, default=32,
 parser.add_argument('-s', '--start_epoch', type=int, default=0,
                     help='Epoch to start training with (default: 0)')
 
-parser.add_argument('-t', '--end_epoch', type=int, default=20,
+parser.add_argument('-t', '--end_epoch', type=int, default=500,
                     help='Epoch to end training (default: 200)')
 parser.add_argument('--save_latest_freq', type=int, default=500)                
 

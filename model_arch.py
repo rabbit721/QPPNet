@@ -89,11 +89,14 @@ class QPPNet():
         # Initialize the neural units
         self.units = {}
         self.optimizers, self.schedulers = {}, {}
+        self.best = 100000
         for operator in dim_dict:
             self.units[operator] = NeuralUnit(operator).to(self.device)
             optimizer = torch.optim.Adam(self.units[operator].parameters(),
                                          opt.lr) #opt.lr
-            sc = lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.99)
+            #optimizer = torch.optim.SGD(self.units[operator].parameters(), 
+            #                            lr=opt.lr, momentum=0.9)
+            sc = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.95)
 
             self.optimizers[operator] = optimizer
             self.schedulers[operator] = sc
@@ -103,7 +106,6 @@ class QPPNet():
         self.dummy = torch.zeros(1).to(self.device)
         self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
         self.curr_losses = {operator: 0 for operator in dim_dict}
-
 
     def set_input(self, samp_dicts):
         self.input = samp_dicts
@@ -124,7 +126,7 @@ class QPPNet():
             if not child_plan_dict['is_subplan']:
                 input_vec = torch.cat((input_vec, child_output_vec),axis=1)
                 # first dim is subbatch_size
-
+        #print(input_vec)
         #print(samp_batch['node_type'], input_vec.size())
         output_vec = self.units[samp_batch['node_type']](input_vec)
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
@@ -153,8 +155,12 @@ class QPPNet():
             op_loss = torch.sum(torch.cat(self.acc_loss[operator])) / batch_size
             self.curr_losses[operator] = op_loss.item()
             total_loss += op_loss
-        print(total_loss)
+
         total_loss = torch.sqrt(total_loss)
+        print("total loss: ", total_loss.item())
+        if self.best > total_loss.item():
+            self.best = total_loss.item()
+            self.save_units('best')
         total_loss.backward()
         
     def optimize_parameters(self, batch_size):
