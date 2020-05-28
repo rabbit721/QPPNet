@@ -71,7 +71,7 @@ class NeuralUnit(nn.Module):
 
     def forward(self, x):
         """ Forward function """
-        out = self.dense_block(x)  
+        out = self.dense_block(x)
         return out
 
 ###############################################################################
@@ -85,7 +85,7 @@ class QPPNet():
         self.save_dir = opt.save_dir
         if not os.path.exists(self.save_dir):
             os.mkdir(self.save_dir)
-            
+
         # Initialize the neural units
         self.units = {}
         self.optimizers, self.schedulers = {}, {}
@@ -94,7 +94,7 @@ class QPPNet():
             self.units[operator] = NeuralUnit(operator).to(self.device)
             optimizer = torch.optim.Adam(self.units[operator].parameters(),
                                          opt.lr) #opt.lr
-            #optimizer = torch.optim.SGD(self.units[operator].parameters(), 
+            #optimizer = torch.optim.SGD(self.units[operator].parameters(),
             #                            lr=opt.lr, momentum=0.9)
             sc = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.95)
 
@@ -132,10 +132,10 @@ class QPPNet():
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
         pred_time = torch.mean(pred_time, 1)
         #print(output_vec, samp_batch['total_time'])
-        
-        loss = self.loss_fn(pred_time, 
+
+        loss = self.loss_fn(pred_time,
                             torch.from_numpy(samp_batch['total_time']).to(self.device))
-        
+
         self.acc_loss[samp_batch['node_type']].append(loss.unsqueeze(0))
         return output_vec
 
@@ -162,7 +162,7 @@ class QPPNet():
             self.best = total_loss.item()
             self.save_units('best')
         total_loss.backward()
-        
+
     def optimize_parameters(self, batch_size):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self.forward()
@@ -184,6 +184,7 @@ class QPPNet():
                 unit.to(self.device)
             else:
                 torch.save(unit.cpu().state_dict(), save_path)
+
     '''
     def optimize_parameters(self, batch_size):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
