@@ -1,7 +1,8 @@
 # basic input:
 # plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
 
-# Sort: sort key [one-hot] (to be added), sort method [one-hot 2];                   2 + 3 = 5
+# Sort: sort key [one-hot (num_rel * max_num_attr = 128)],
+#       sort method [one-hot 2];                                                     128 + 2 + 3 = 133
 # Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
 # Hash Join: Join type [one-hot 4], parent relationship [one-hot 3];                 7 + 3 = 10
 # Scan: relation name [one-hot 8]; attr min, med, max; [use one-hot instead 16]      8 + 16 + 3 = 27

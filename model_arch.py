@@ -12,7 +12,7 @@ from train_utils import *
 
 basic = 3
 # this is from examining the tpch output
-dim_dict = {'Seq Scan': 27, 'Sort': 5 + 32, 'Hash': 4 + 32,
+dim_dict = {'Seq Scan': 27, 'Sort': 128 + 5 + 32, 'Hash': 4 + 32,
             'Hash Join': 10 + 32 * 2, 'Merge Join': 10 + 32 * 2,
             'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
             'Subquery Scan': 32 + 3,
@@ -120,13 +120,14 @@ class QPPNet():
         '''
         input_vec = samp_batch['feat_vec']
         input_vec = torch.from_numpy(input_vec).to(self.device)
-
+        print(samp_batch['node_type'], input_vec)
+        
         for child_plan_dict in samp_batch['children_plan']:
             child_output_vec = self.forward_oneQ_batch(child_plan_dict)
             if not child_plan_dict['is_subplan']:
                 input_vec = torch.cat((input_vec, child_output_vec),axis=1)
                 # first dim is subbatch_size
-        #print(input_vec)
+
         #print(samp_batch['node_type'], input_vec.size())
         output_vec = self.units[samp_batch['node_type']](input_vec)
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col

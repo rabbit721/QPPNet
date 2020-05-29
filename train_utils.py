@@ -41,15 +41,24 @@ def get_hash_input(plan_dict):
 
 def get_join_input(plan_dict):
     type_vec = [0] * len(join_types)
-    type_vec[join_types.index(plan_dict['Join Type']).lower()] = 1
+    type_vec[join_types.index(plan_dict['Join Type'].lower())] = 1
     par_rel_vec = [0] * len(parent_rel_types)
     par_rel_vec[parent_rel_types.index(plan_dict['Parent Relationship'].lower())] = 1
     return get_basics(plan_dict) + type_vec + par_rel_vec
 
+def get_sort_key_input(plan_dict):
+    kys = plan_dict['Sort Key']
+    one_hot = [0] * (num_rel * max_num_attr)
+    for key in kys:
+        rel_name, attr_name = key.split(' ')[0].split('.')
+        one_hot[rel_names.index(rel_name) * max_num_attr
+                + rel_attr_list_dict[rel_name].index(attr_name.lower())] = 1
+    return one_hot
+
 def get_sort_input(plan_dict):
     sort_meth = [0] * len(sort_algos)
     sort_meth[sort_algos.index(plan_dict['Sort Method'].lower())] = 1
-    return get_basics(plan_dict) +  sort_meth
+    return get_basics(plan_dict) + get_sort_key_input(plan_dict) + sort_meth
 
 def get_aggreg_input(plan_dict):
     strat_vec = [0] * len(aggreg_strats)
@@ -116,7 +125,6 @@ def get_input(data): # Helper for sample_data
     new_samp_dict["node_type"] = data[0]["Node Type"]
     feat_vec = [GET_INPUT[jss["Node Type"]](jss) for jss in data]
     total_time = [jss['Actual Total Time'] for jss in data]
-
     child_plan_lst = []
     if 'Plans' in data[0]:
         # get the children's dict containing feat_vecs
@@ -133,7 +141,6 @@ def get_input(data): # Helper for sample_data
         new_samp_dict['is_subplan'] = True
     else:
         new_samp_dict['is_subplan'] = False
-
     return new_samp_dict
 
 ###############################################################################
@@ -145,6 +152,7 @@ def sample_data(dataset, batch_size):
     print(samp)
     samp_group = [[] for _ in range(num_q)]
     for idx in samp:
+        # assuming we have 32 queries from each template
         samp_group[idx // 32].append(dataset[idx])
 
     return [get_input(grp) for grp in samp_group if len(grp) != 0]
