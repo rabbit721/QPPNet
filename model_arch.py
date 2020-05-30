@@ -21,7 +21,7 @@ dim_dict = {'Seq Scan': 27, 'Sort': 128 + 5 + 32, 'Hash': 4 + 32,
 # basic input:
 # plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
 
-# Sort: sort key [one-hot] (ignored), sort method [one-hot 2];                       2 + 3 = 5
+# Sort: sort key [one-hot 128], sort method [one-hot 2];                       2 + 3 = 5
 # Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
 # Hash Join: Join type [one-hot 4], parent relationship [one-hot 3];                 7 + 3 = 10
 # Scan: relation name [one-hot ?]; attr min, med, max; [use one-hot instead]         4 + 3 = 7
@@ -121,17 +121,23 @@ class QPPNet():
         input_vec = samp_batch['feat_vec']
         input_vec = torch.from_numpy(input_vec).to(self.device)
         print(samp_batch['node_type'], input_vec)
-        
+        subplans_time = []
         for child_plan_dict in samp_batch['children_plan']:
             child_output_vec = self.forward_oneQ_batch(child_plan_dict)
             if not child_plan_dict['is_subplan']:
                 input_vec = torch.cat((input_vec, child_output_vec),axis=1)
                 # first dim is subbatch_size
+            else:
+                subplans_time.append(torch.index_select(child_output_vec, 1, torch.zeros(1, dtype=torch.long)))
 
         #print(samp_batch['node_type'], input_vec.size())
         output_vec = self.units[samp_batch['node_type']](input_vec)
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
-        pred_time = torch.mean(pred_time, 1)
+        ## just to get a 1-dim vec of size batch_size out of a batch_sizex1 matrix
+        # pred_time = torch.mean(pred_time, 1)
+
+        pred_time = torch.mean(torch.cat([pred_time] + subplans_time), 1)
+
         #print(output_vec, samp_batch['total_time'])
 
         loss = self.loss_fn(pred_time,

@@ -7,8 +7,9 @@ from attr_rel_dict import *
 num_rel = 8
 max_num_attr = 16
 num_q = 22
+num_sample_per_q = 32
 
-
+# need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
 def get_basics(plan_dict):
     return [plan_dict['Plan Width'] / 500, plan_dict['Plan Rows'] / 10,
             plan_dict['Total Cost'] / 5000]
@@ -105,7 +106,6 @@ def create_dataset(data_dir):
     data = []
     for fname in fnames:
         data += get_all_plans(data_dir + fname)
-
     return data
 
 
@@ -153,6 +153,6 @@ def sample_data(dataset, batch_size):
     samp_group = [[] for _ in range(num_q)]
     for idx in samp:
         # assuming we have 32 queries from each template
-        samp_group[idx // 32].append(dataset[idx])
+        samp_group[idx // num_sample_per_q].append(dataset[idx])
 
     return [get_input(grp) for grp in samp_group if len(grp) != 0]
