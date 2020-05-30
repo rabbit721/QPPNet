@@ -18,7 +18,7 @@ join_types = ['semi', 'inner', 'anti', 'full']
 
 parent_rel_types = ['inner', 'outer', 'subquery']
 
-sort_algos = ['quicksort', 'top-N heapsort']
+sort_algos = ['quicksort', 'top-n heapsort']
 
 aggreg_strats = ['plain', 'sorted', 'hashed']
 

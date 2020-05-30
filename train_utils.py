@@ -7,7 +7,7 @@ from attr_rel_dict import *
 num_rel = 8
 max_num_attr = 16
 num_q = 22
-num_sample_per_q = 32
+num_sample_per_q = 320
 
 # need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
 def get_basics(plan_dict):
@@ -51,9 +51,13 @@ def get_sort_key_input(plan_dict):
     kys = plan_dict['Sort Key']
     one_hot = [0] * (num_rel * max_num_attr)
     for key in kys:
-        rel_name, attr_name = key.split(' ')[0].split('.')
-        one_hot[rel_names.index(rel_name) * max_num_attr
-                + rel_attr_list_dict[rel_name].index(attr_name.lower())] = 1
+        key = key.replace('(', ' ').replace(')', ' ')
+        for subkey in key.split(" "):
+            if subkey != ' ' and '.' in subkey:
+                rel_name, attr_name = subkey.split(' ')[0].split('.')
+                one_hot[rel_names.index(rel_name) * max_num_attr
+                        + rel_attr_list_dict[rel_name].index(attr_name.lower())] = 1
+
     return one_hot
 
 def get_sort_input(plan_dict):
@@ -85,16 +89,18 @@ GET_INPUT = collections.defaultdict(lambda: get_basics, GET_INPUT)
 def get_all_plans(fname):
     jsonstrs = []
     curr = ""
+    prev = None
+    prevprev = None
     with open(fname,'r') as f:
         for row in f:
-            if 'Timing is on' in row:
-                continue
-            if row[:6] == "Time: ":
-                # jsonstrs.append((curr, row.strip("\n")))
+            newrow = row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
+            if 'CREATE' not in newrow and 'DROP' not in newrow:
+                curr += newrow
+            if prevprev is not None and 'Execution Time' in prevprev:
                 jsonstrs.append(curr.strip(' ').strip('QUERY PLAN').strip('-'))
                 curr = ""
-            else:
-                curr += row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
+            prevprev = prev
+            prev = newrow
     strings = [s for s in jsonstrs if s[-1] == ']']
     jss = [json.loads(s)[0]['Plan'] for s in strings]
     # jss is a list of json-transformed dicts, one for each query
@@ -105,11 +111,12 @@ def create_dataset(data_dir):
     fnames = os.listdir(data_dir)
     data = []
     for fname in fnames:
-        data += get_all_plans(data_dir + fname)
+        if 'csv' in fname:
+          data += get_all_plans(data_dir + fname)
     return data
 
 
-def get_input(data): # Helper for sample_data
+def get_input(data, i): # Helper for sample_data
     """
     Parameter: data is a list of plan_dict; all entry is from the same
     query template and thus have the same query plan;
@@ -131,9 +138,10 @@ def get_input(data): # Helper for sample_data
         #if jss['Node Type'] == 'Seq Scan':
         #    print(jss['Plans'])
         for i in range(len(data[0]['Plans'])):
-            child_plan_dict = get_input([jss['Plans'][i] for jss in data])
+            child_plan_dict = get_input([jss['Plans'][i] for jss in data], 'dum')
             child_plan_lst.append(child_plan_dict)
 
+    print(i, [d["Node Type"] for d in data], feat_vec)
     new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
     new_samp_dict["children_plan"] = child_plan_lst
     new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / 10
@@ -149,10 +157,10 @@ def get_input(data): # Helper for sample_data
 def sample_data(dataset, batch_size):
     # dataset: all queries used in training
     samp = np.random.choice(np.arange(len(dataset)), batch_size, replace=False)
-    print(samp)
+    #print(samp)
     samp_group = [[] for _ in range(num_q)]
     for idx in samp:
         # assuming we have 32 queries from each template
         samp_group[idx // num_sample_per_q].append(dataset[idx])
 
-    return [get_input(grp) for grp in samp_group if len(grp) != 0]
+    return [get_input(grp, i) for i, grp in enumerate(samp_group) if len(grp) != 0]

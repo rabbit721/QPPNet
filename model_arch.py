@@ -12,16 +12,17 @@ from train_utils import *
 
 basic = 3
 # this is from examining the tpch output
-dim_dict = {'Seq Scan': 27, 'Sort': 128 + 5 + 32, 'Hash': 4 + 32,
+dim_dict = {'Seq Scan': num_rel + max_num_attr + 3 , 'Sort': 128 + 5 + 32, 
+            'Hash': 4 + 32,
             'Hash Join': 10 + 32 * 2, 'Merge Join': 10 + 32 * 2,
             'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
             'Subquery Scan': 32 + 3,
-            'Materialize': 32 + 3, 'Gather Merge': 32 + 3}
+            'Materialize': 32 + 3, 'Gather Merge': 32 + 3, 'Gather': 32 + 3}
 
 # basic input:
 # plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
 
-# Sort: sort key [one-hot 128], sort method [one-hot 2];                       2 + 3 = 5
+# Sort: sort key [one-hot 128], sort method [one-hot 2];                             2 + 3 = 5
 # Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
 # Hash Join: Join type [one-hot 4], parent relationship [one-hot 3];                 7 + 3 = 10
 # Scan: relation name [one-hot ?]; attr min, med, max; [use one-hot instead]         4 + 3 = 7
@@ -96,7 +97,7 @@ class QPPNet():
                                          opt.lr) #opt.lr
             #optimizer = torch.optim.SGD(self.units[operator].parameters(),
             #                            lr=opt.lr, momentum=0.9)
-            sc = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.95)
+            sc = lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
 
             self.optimizers[operator] = optimizer
             self.schedulers[operator] = sc
@@ -120,7 +121,7 @@ class QPPNet():
         '''
         input_vec = samp_batch['feat_vec']
         input_vec = torch.from_numpy(input_vec).to(self.device)
-        print(samp_batch['node_type'], input_vec)
+        #print(samp_batch['node_type'], input_vec)
         subplans_time = []
         for child_plan_dict in samp_batch['children_plan']:
             child_output_vec = self.forward_oneQ_batch(child_plan_dict)
@@ -135,14 +136,16 @@ class QPPNet():
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
         ## just to get a 1-dim vec of size batch_size out of a batch_sizex1 matrix
         # pred_time = torch.mean(pred_time, 1)
-
-        pred_time = torch.mean(torch.cat([pred_time] + subplans_time), 1)
-
+        
+        cat_res = torch.cat([pred_time] + subplans_time, axis=1)
+        #print("cat_res.shape", cat_res.shape)
+        pred_time = torch.mean(cat_res, 1)
+        #print("pred_time.shape", pred_time.shape)
         #print(output_vec, samp_batch['total_time'])
 
         loss = self.loss_fn(pred_time,
                             torch.from_numpy(samp_batch['total_time']).to(self.device))
-
+        #print(loss.shape)
         self.acc_loss[samp_batch['node_type']].append(loss.unsqueeze(0))
         return output_vec
 

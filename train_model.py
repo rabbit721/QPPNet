@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 parser.add_argument('-dir', '--save_dir', type=str, default='./saved_model',
                     help='Dir to save model weights (default: ./saved_model)')
 
-parser.add_argument('--lr', type=float, default=1e-3,
+parser.add_argument('--lr', type=float, default=1e-4,
                     help='Learning rate (default: 1e-3)')
 
 parser.add_argument('--batch_size', type=int, default=32,
@@ -22,14 +22,15 @@ parser.add_argument('-s', '--start_epoch', type=int, default=0,
 
 parser.add_argument('-t', '--end_epoch', type=int, default=200,
                     help='Epoch to end training (default: 200)')
-parser.add_argument('--save_latest_freq', type=int, default=500)
+parser.add_argument('--save_latest_epoch_freq', type=int, default=100)
 
 
 if __name__ == '__main__':
-    opt = parser.parse_args([])
+    opt = parser.parse_args(['-t', '2000', '--batch_size', '64'])
     data_dir = 'res_by_temp/'
     dataset = create_dataset(data_dir)
     dataset_size = len(dataset)
+    print("dataset_size", dataset_size)
     torch.set_default_tensor_type(torch.FloatTensor)
     qpp = QPPNet(opt)
 
@@ -54,6 +55,6 @@ if __name__ == '__main__':
         print(loss_str)
 
 
-        if total_iter % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
-            print('saving the latest model (epoch %d, total_iters %d)' % (epoch, total_iter))
-            qpp.save_units(epoch)
+        if (epoch + 1) % opt.save_latest_epoch_freq == 0:   # cache our latest model every <save_latest_freq> iterations
+            print('saving the latest model (epoch %d, total_iters %d)' % (epoch + 1, total_iter))
+            qpp.save_units(epoch + 1)
