@@ -12,7 +12,7 @@
 # all operators used in tpc-h
 all_dicts = ['Aggregate', 'Gather Merge', 'Sort', 'Seq Scan', 'Limit',
              'Hash Join', 'Hash', 'Nested Loop', 'Materialize', 'Merge Join',
-             'Subquery Scan']
+             'Subquery Scan', 'Gather']
 
 join_types = ['semi', 'inner', 'anti', 'full']
 

@@ -1,6 +1,6 @@
 import time, torch
 from model_arch import QPPNet
-from train_utils import create_dataset, sample_data
+from train_utils import DataSet
 import argparse
 
 
@@ -22,15 +22,18 @@ parser.add_argument('-s', '--start_epoch', type=int, default=0,
 
 parser.add_argument('-t', '--end_epoch', type=int, default=200,
                     help='Epoch to end training (default: 200)')
+
 parser.add_argument('--save_latest_epoch_freq', type=int, default=100)
 
+parser.add_argument('--num_q', type=int, default=22)
+parser.add_argument('--num_sample_per_q', type=int, default=320)
 
 if __name__ == '__main__':
     opt = parser.parse_args(['-t', '2000', '--batch_size', '64'])
     data_dir = 'res_by_temp/'
-    dataset = create_dataset(data_dir)
-    dataset_size = len(dataset)
-    print("dataset_size", dataset_size)
+    dataset = DataSet(data_dir, opt)
+
+    print("dataset_size", dataset.datasize)
     torch.set_default_tensor_type(torch.FloatTensor)
     qpp = QPPNet(opt)
 
@@ -41,7 +44,7 @@ if __name__ == '__main__':
         iter_data_time = time.time()    # timer for data loading per iteration
         epoch_iter = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
 
-        samp_dicts = sample_data(dataset, opt.batch_size)
+        samp_dicts = dataset.sample_data()
         total_iter += opt.batch_size
 
         qpp.set_input(samp_dicts)

@@ -6,13 +6,11 @@ from attr_rel_dict import *
 # get the columns of all relations
 num_rel = 8
 max_num_attr = 16
-num_q = 22
-num_sample_per_q = 320
 
 # need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
 def get_basics(plan_dict):
-    return [plan_dict['Plan Width'] / 500, plan_dict['Plan Rows'] / 10,
-            plan_dict['Total Cost'] / 5000]
+    return [plan_dict['Plan Width'], plan_dict['Plan Rows'],
+            plan_dict['Total Cost']]
 
 def get_rel_one_hot(rel_name):
     arr = [0] * num_rel
@@ -44,7 +42,8 @@ def get_join_input(plan_dict):
     type_vec = [0] * len(join_types)
     type_vec[join_types.index(plan_dict['Join Type'].lower())] = 1
     par_rel_vec = [0] * len(parent_rel_types)
-    par_rel_vec[parent_rel_types.index(plan_dict['Parent Relationship'].lower())] = 1
+    if 'Parent Relationship' in plan_dict:
+        par_rel_vec[parent_rel_types.index(plan_dict['Parent Relationship'].lower())] = 1
     return get_basics(plan_dict) + type_vec + par_rel_vec
 
 def get_sort_key_input(plan_dict):
@@ -86,81 +85,109 @@ GET_INPUT = collections.defaultdict(lambda: get_basics, GET_INPUT)
 ###############################################################################
 #       Parsing data from csv files that contain json output of queries       #
 ###############################################################################
-def get_all_plans(fname):
-    jsonstrs = []
-    curr = ""
-    prev = None
-    prevprev = None
-    with open(fname,'r') as f:
-        for row in f:
-            newrow = row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
-            if 'CREATE' not in newrow and 'DROP' not in newrow:
-                curr += newrow
-            if prevprev is not None and 'Execution Time' in prevprev:
-                jsonstrs.append(curr.strip(' ').strip('QUERY PLAN').strip('-'))
-                curr = ""
-            prevprev = prev
-            prev = newrow
-    strings = [s for s in jsonstrs if s[-1] == ']']
-    jss = [json.loads(s)[0]['Plan'] for s in strings]
-    # jss is a list of json-transformed dicts, one for each query
-    return jss
 
-def create_dataset(data_dir):
-    assert('res_by_temp/' == data_dir[-14:])
-    fnames = os.listdir(data_dir)
-    data = []
-    for fname in fnames:
-        if 'csv' in fname:
-          data += get_all_plans(data_dir + fname)
-    return data
+class DataSet():
+    def __init__(self, data_dir, opt):
+        assert('res_by_temp/' == data_dir[-14:])
+        fnames = os.listdir(data_dir)
+        data = []
+        for fname in fnames:
+            if 'csv' in fname:
+              data += self.get_all_plans(data_dir + fname)
+        self.dataset = data
+        self.datasize = len(self.dataset)
+        self.num_sample_per_q = opt.num_sample_per_q
+        self.num_q = opt.num_q
+        self.mean_std_dict = self.normalize()
+        self.batch_size = opt.batch_size
 
+    def normalize(self): # compute the mean and std vec of each operator
+        feat_vec_col = {operator : [] for operator in all_dicts}
 
-def get_input(data, i): # Helper for sample_data
-    """
-    Parameter: data is a list of plan_dict; all entry is from the same
-    query template and thus have the same query plan;
+        def parse_input(data): # Helper for sample_data
+            feat_vec = [GET_INPUT[data[0]["Node Type"]](jss) for jss in data]
+            if 'Plans' in data[0]:
+                for i in range(len(data[0]['Plans'])):
+                    parse_input([jss['Plans'][i] for jss in data])
+            feat_vec_col[data[0]["Node Type"]].append(np.array(feat_vec).astype(np.float32))
 
-    Returns: a single plan dict of similar structure, where each node has
-        node_type     ---- a string, same as before
-        feat_vec      ---- numpy array of size (batch_size x feat_size)
-        children_plan ---- a list of children's plan_dicts where each plan_dict
-                           has feat_vec encompassing that child in all
-                           co-plans
-    """
-    new_samp_dict = {}
-    new_samp_dict["node_type"] = data[0]["Node Type"]
-    feat_vec = [GET_INPUT[jss["Node Type"]](jss) for jss in data]
-    total_time = [jss['Actual Total Time'] for jss in data]
-    child_plan_lst = []
-    if 'Plans' in data[0]:
-        # get the children's dict containing feat_vecs
-        #if jss['Node Type'] == 'Seq Scan':
-        #    print(jss['Plans'])
-        for i in range(len(data[0]['Plans'])):
-            child_plan_dict = get_input([jss['Plans'][i] for jss in data], 'dum')
-            child_plan_lst.append(child_plan_dict)
+        for i in range(self.datasize // self.num_sample_per_q):
+            parse_input(self.dataset[i*self.num_sample_per_q:(i+1)*self.num_sample_per_q])
 
-    print(i, [d["Node Type"] for d in data], feat_vec)
-    new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
-    new_samp_dict["children_plan"] = child_plan_lst
-    new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / 10
-    if 'Subplan Name' in data[0]:
-        new_samp_dict['is_subplan'] = True
-    else:
-        new_samp_dict['is_subplan'] = False
-    return new_samp_dict
+        def cmp_mean_std(feat_vec_lst):
+          if len(feat_vec_lst) == 0:
+            return (0, 1)
+          else: 
+            total_vec = np.concatenate(feat_vec_lst)
+            return (np.mean(total_vec, axis=0), np.std(total_vec, axis=0))
 
-###############################################################################
-#       Sampling subbatch data from the dataset; total size is batch_size     #
-###############################################################################
-def sample_data(dataset, batch_size):
-    # dataset: all queries used in training
-    samp = np.random.choice(np.arange(len(dataset)), batch_size, replace=False)
-    #print(samp)
-    samp_group = [[] for _ in range(num_q)]
-    for idx in samp:
-        # assuming we have 32 queries from each template
-        samp_group[idx // num_sample_per_q].append(dataset[idx])
+        mean_std_dict = {operator : cmp_mean_std(feat_vec_col[operator]) \
+                         for operator in all_dicts}
+        return mean_std_dict
 
-    return [get_input(grp, i) for i, grp in enumerate(samp_group) if len(grp) != 0]
+    def get_all_plans(self, fname):
+        jsonstrs = []
+        curr = ""
+        prev = None
+        prevprev = None
+        with open(fname,'r') as f:
+            for row in f:
+                newrow = row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
+                if 'CREATE' not in newrow and 'DROP' not in newrow:
+                    curr += newrow
+                if prevprev is not None and 'Execution Time' in prevprev:
+                    jsonstrs.append(curr.strip(' ').strip('QUERY PLAN').strip('-'))
+                    curr = ""
+                prevprev = prev
+                prev = newrow
+        strings = [s for s in jsonstrs if s[-1] == ']']
+        jss = [json.loads(s)[0]['Plan'] for s in strings]
+        # jss is a list of json-transformed dicts, one for each query
+        return jss
+
+    def get_input(self, data, i): # Helper for sample_data
+        """
+        Parameter: data is a list of plan_dict; all entry is from the same
+        query template and thus have the same query plan;
+
+        Returns: a single plan dict of similar structure, where each node has
+            node_type     ---- a string, same as before
+            feat_vec      ---- numpy array of size (batch_size x feat_size)
+            children_plan ---- a list of children's plan_dicts where each plan_dict
+                               has feat_vec encompassing that child in all
+                               co-plans
+        """
+        new_samp_dict = {}
+        new_samp_dict["node_type"] = data[0]["Node Type"]
+        feat_vec = [GET_INPUT[jss["Node Type"]](jss) for jss in data]
+        total_time = [jss['Actual Total Time'] for jss in data]
+        child_plan_lst = []
+        if 'Plans' in data[0]:
+            for i in range(len(data[0]['Plans'])):
+                child_plan_dict = self.get_input([jss['Plans'][i] for jss in data], 'dum')
+                child_plan_lst.append(child_plan_dict)
+
+        #print(i, [d["Node Type"] for d in data], feat_vec)
+        new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
+        new_samp_dict["children_plan"] = child_plan_lst
+        new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / 10
+
+        if 'Subplan Name' in data[0]:
+            new_samp_dict['is_subplan'] = True
+        else:
+            new_samp_dict['is_subplan'] = False
+        return new_samp_dict
+
+    ###############################################################################
+    #       Sampling subbatch data from the dataset; total size is batch_size     #
+    ###############################################################################
+    def sample_data(self):
+        # dataset: all queries used in training
+        samp = np.random.choice(np.arange(self.datasize), self.batch_size, replace=False)
+        #print(samp)
+        samp_group = [[] for _ in range(self.num_q)]
+        for idx in samp:
+            # assuming we have 32 queries from each template
+            samp_group[idx // self.num_sample_per_q].append(self.dataset[idx])
+
+        return [self.get_input(grp, i) for i, grp in enumerate(samp_group) if len(grp) != 0]
