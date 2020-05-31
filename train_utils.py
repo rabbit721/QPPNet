@@ -98,7 +98,9 @@ class DataSet():
         self.datasize = len(self.dataset)
         self.num_sample_per_q = opt.num_sample_per_q
         self.num_q = opt.num_q
-        self.mean_std_dict = self.normalize()
+        self.mean_range_dict = self.normalize()
+
+        print(self.mean_range_dict)
         self.batch_size = opt.batch_size
 
     def normalize(self): # compute the mean and std vec of each operator
@@ -114,16 +116,17 @@ class DataSet():
         for i in range(self.datasize // self.num_sample_per_q):
             parse_input(self.dataset[i*self.num_sample_per_q:(i+1)*self.num_sample_per_q])
 
-        def cmp_mean_std(feat_vec_lst):
+        def cmp_mean_range(feat_vec_lst):
           if len(feat_vec_lst) == 0:
             return (0, 1)
-          else: 
+          else:
             total_vec = np.concatenate(feat_vec_lst)
-            return (np.mean(total_vec, axis=0), np.std(total_vec, axis=0))
+            return (np.mean(total_vec, axis=0),
+                    np.max(total_vec, axis=0)+np.finfo(np.float32).eps)
 
-        mean_std_dict = {operator : cmp_mean_std(feat_vec_col[operator]) \
+        mean_range_dict = {operator : cmp_mean_range(feat_vec_col[operator]) \
                          for operator in all_dicts}
-        return mean_std_dict
+        return mean_range_dict
 
     def get_all_plans(self, fname):
         jsonstrs = []
@@ -160,6 +163,13 @@ class DataSet():
         new_samp_dict = {}
         new_samp_dict["node_type"] = data[0]["Node Type"]
         feat_vec = [GET_INPUT[jss["Node Type"]](jss) for jss in data]
+
+        # normalize feat_vec
+        feat_vec = (feat_vec -
+                    self.mean_range_dict[new_samp_dict["node_type"]][0]) \
+                    / self.mean_range_dict[new_samp_dict["node_type"]][1]
+
+
         total_time = [jss['Actual Total Time'] for jss in data]
         child_plan_lst = []
         if 'Plans' in data[0]:

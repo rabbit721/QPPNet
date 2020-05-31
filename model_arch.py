@@ -12,7 +12,7 @@ from train_utils import *
 
 basic = 3
 # this is from examining the tpch output
-dim_dict = {'Seq Scan': num_rel + max_num_attr + 3 , 'Sort': 128 + 5 + 32, 
+dim_dict = {'Seq Scan': num_rel + max_num_attr + 3 , 'Sort': 128 + 5 + 32,
             'Hash': 4 + 32,
             'Hash Join': 10 + 32 * 2, 'Merge Join': 10 + 32 * 2,
             'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
@@ -65,7 +65,7 @@ class NeuralUnit(nn.Module):
 
         for layer in dense_block:
           try:
-            nn.init.xavier_uniform(layer.weight)
+            nn.init.xavier_uniform_(layer.weight)
           except:
             pass
         return nn.Sequential(*dense_block)
@@ -84,6 +84,7 @@ class QPPNet():
         self.device = torch.device('cuda:0') if torch.cuda.is_available() \
                                              else torch.device('cpu:0')
         self.save_dir = opt.save_dir
+        self.last_total_loss = None
         if not os.path.exists(self.save_dir):
             os.mkdir(self.save_dir)
 
@@ -133,13 +134,14 @@ class QPPNet():
 
         #print(samp_batch['node_type'], input_vec.size())
         output_vec = self.units[samp_batch['node_type']](input_vec)
+        #print(output_vec.shape)
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
         ## just to get a 1-dim vec of size batch_size out of a batch_sizex1 matrix
         # pred_time = torch.mean(pred_time, 1)
-        
+
         cat_res = torch.cat([pred_time] + subplans_time, axis=1)
         #print("cat_res.shape", cat_res.shape)
-        pred_time = torch.mean(cat_res, 1)
+        pred_time = torch.sum(cat_res, 1)
         #print("pred_time.shape", pred_time.shape)
         #print(output_vec, samp_batch['total_time'])
 
@@ -147,6 +149,16 @@ class QPPNet():
                             torch.from_numpy(samp_batch['total_time']).to(self.device))
         #print(loss.shape)
         self.acc_loss[samp_batch['node_type']].append(loss.unsqueeze(0))
+        try:
+            assert(not (torch.isnan(output_vec).any()))
+        except:
+            if torch.cuda.is_available():
+                print(samp_batch['node_type'], "output_vec: ", output_vec,
+                      self.units[samp_batch['node_type']].module.cpu().state_dict())
+            else:
+                print(samp_batch['node_type'], "output_vec: ", output_vec,
+                      self.units[samp_batch['node_type']].cpu().state_dict())
+            exit(-1)
         return output_vec
 
     def forward(self):
@@ -168,6 +180,7 @@ class QPPNet():
 
         total_loss = torch.sqrt(total_loss)
         print("total loss: ", total_loss.item())
+        self.last_total_loss = total_loss.item()
         if self.best > total_loss.item():
             self.best = total_loss.item()
             self.save_units('best')

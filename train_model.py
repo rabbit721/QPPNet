@@ -23,13 +23,16 @@ parser.add_argument('-s', '--start_epoch', type=int, default=0,
 parser.add_argument('-t', '--end_epoch', type=int, default=200,
                     help='Epoch to end training (default: 200)')
 
-parser.add_argument('--save_latest_epoch_freq', type=int, default=100)
+parser.add_argument('-epoch_freq', '--save_latest_epoch_freq', type=int, default=100)
+
+parser.add_argument('-logf', '--logfile', type=str, default='train_loss.txt')
+
 
 parser.add_argument('--num_q', type=int, default=22)
 parser.add_argument('--num_sample_per_q', type=int, default=320)
 
 if __name__ == '__main__':
-    opt = parser.parse_args(['-t', '2000', '--batch_size', '64'])
+    opt = parser.parse_args()
     data_dir = 'res_by_temp/'
     dataset = DataSet(data_dir, opt)
 
@@ -38,6 +41,8 @@ if __name__ == '__main__':
     qpp = QPPNet(opt)
 
     total_iter = 0
+
+    logf = open(opt.logfile, 'w')
 
     for epoch in range(opt.start_epoch, opt.end_epoch):
         epoch_start_time = time.time()  # timer for entire epoch
@@ -49,6 +54,10 @@ if __name__ == '__main__':
 
         qpp.set_input(samp_dicts)
         qpp.optimize_parameters(opt.batch_size)
+        logf.write("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
+                   + '; total_loss: {}; '.format(qpp.last_total_loss))
+        print("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
+              + '; total_loss: {}; '.format(qpp.last_total_loss))
 
         #if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
         losses = qpp.get_current_losses()
@@ -57,7 +66,10 @@ if __name__ == '__main__':
           loss_str += str(op) + " [" + str(losses[op]) + "]; "
         print(loss_str)
 
+        logf.write(loss_str + '\n')
 
         if (epoch + 1) % opt.save_latest_epoch_freq == 0:   # cache our latest model every <save_latest_freq> iterations
             print('saving the latest model (epoch %d, total_iters %d)' % (epoch + 1, total_iter))
             qpp.save_units(epoch + 1)
+
+    logf.close()
