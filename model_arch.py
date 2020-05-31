@@ -113,6 +113,7 @@ class QPPNet():
         self.dummy = torch.zeros(1).to(self.device)
         self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
         self.curr_losses = {operator: 0 for operator in dim_dict}
+        self.total_loss = None
 
     def set_input(self, samp_dicts):
         self.input = samp_dicts
@@ -151,10 +152,12 @@ class QPPNet():
         if self.test:
             print(samp_batch['node_type'], pred_time, samp_batch['total_time'])
 
-        loss = self.loss_fn(pred_time,
-                            torch.from_numpy(samp_batch['total_time']).to(self.device))
-        #print(loss.shape)
-        self.acc_loss[samp_batch['node_type']].append(loss.unsqueeze(0))
+        loss = (pred_time -
+                torch.from_numpy(samp_batch['total_time']).to(self.device)) ** 2
+        #print("loss.shape", loss.shape)
+        self.acc_loss[samp_batch['node_type']].append(loss)
+
+        # added to deal with NaN
         try:
             assert(not (torch.isnan(output_vec).any()))
         except:
@@ -168,29 +171,44 @@ class QPPNet():
         return output_vec
 
     def forward(self):
-        # first clear prev computed losses
-        del self.acc_loss
-        self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
-
         # # self.input is a list of preprocessed plan_vec_dict
+        total_loss = torch.zeros(1).to(self.device)
+        total_losses = {operator: [torch.zeros(1).to(self.device)] \
+                                            for operator in dim_dict}
+
         for samp_dict in self.input:
+            # first clear prev computed losses
+            del self.acc_loss
+            self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
+
             _ = self.forward_oneQ_batch(samp_dict)
+            D_size = 0
+            subbatch_loss = torch.zeros(1).to(self.device)
+            for operator in self.acc_loss:
+                #print(operator, self.acc_loss[operator])
+                all_loss = torch.cat(self.acc_loss[operator])
+                D_size += all_loss.shape[0]
+                #print("all_loss.shape",all_loss.shape)
+                subbatch_loss += torch.sum(all_loss)
+
+                total_losses[operator].append(all_loss)
+
+            subbatch_loss = torch.mean(torch.sqrt(subbatch_loss/D_size))
+            #print("subbatch_loss.shape",subbatch_loss.shape)
+            total_loss += subbatch_loss * samp_dict['subbatch_size']
+
+        self.curr_losses = {operator: torch.mean(torch.cat(total_losses[operator])).item() for operator in dim_dict}
+        self.total_loss = torch.mean(total_loss / self.batch_size)
+        #print("self.total_loss.shape", self.total_loss.shape)
 
     def backward(self):
-        total_loss = torch.zeros(1).to(self.device)
-        for operator in self.acc_loss:
-            #print(operator, self.acc_loss[operator])
-            op_loss = torch.sum(torch.cat(self.acc_loss[operator])) / self.batch_size
-            self.curr_losses[operator] = op_loss.item()
-            total_loss += op_loss
-
-        total_loss = torch.sqrt(total_loss)
-        print("total loss: ", total_loss.item())
-        self.last_total_loss = total_loss.item()
-        if self.best > total_loss.item():
-            self.best = total_loss.item()
+        print("total loss: ", self.total_loss.item())
+        self.last_total_loss = self.total_loss.item()
+        if self.best > self.total_loss.item():
+            self.best = self.total_loss.item()
             self.save_units('best')
-        total_loss.backward()
+        self.total_loss.backward()
+        self.total_loss = None
 
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
@@ -213,21 +231,3 @@ class QPPNet():
                 unit.to(self.device)
             else:
                 torch.save(unit.cpu().state_dict(), save_path)
-
-    '''
-    def optimize_parameters(self, batch_size):
-        """Calculate losses, gradients, and update network weights; called in every training iteration"""
-        # forward
-        self.forward()      # compute fake images and reconstruction images.
-        # G_A and G_B
-        self.set_requires_grad([self.netD_A, self.netD_B], False)  # Ds require no gradients when optimizing Gs
-        self.optimizer_G.zero_grad()  # set G_A and G_B's gradients to zero
-        self.backward_G()             # calculate gradients for G_A and G_B
-        self.optimizer_G.step()       # update G_A and G_B's weights
-        # D_A and D_B
-        self.set_requires_grad([self.netD_A, self.netD_B], True)
-        self.optimizer_D.zero_grad()   # set D_A and D_B's gradients to zero
-        self.backward_D_A()      # calculate gradients for D_A
-        self.backward_D_B()      # calculate graidents for D_B
-        self.optimizer_D.step()  # update D_A and D_B's weights
-    '''

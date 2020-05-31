@@ -168,6 +168,7 @@ class DataSet():
         """
         new_samp_dict = {}
         new_samp_dict["node_type"] = data[0]["Node Type"]
+        new_samp_dict["subbatch_size"] = len(data)
         feat_vec = [GET_INPUT[jss["Node Type"]](jss) for jss in data]
 
         # normalize feat_vec
@@ -186,7 +187,7 @@ class DataSet():
         #print(i, [d["Node Type"] for d in data], feat_vec)
         new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
         new_samp_dict["children_plan"] = child_plan_lst
-        new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / 10
+        new_samp_dict["total_time"] = np.array(total_time).astype(np.float32)
 
         if 'Subplan Name' in data[0]:
             new_samp_dict['is_subplan'] = True

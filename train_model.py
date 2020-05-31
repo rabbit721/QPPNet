@@ -33,8 +33,27 @@ parser.add_argument('--mean_range_dict', type=str)
 parser.add_argument('--num_q', type=int, default=22)
 parser.add_argument('--num_sample_per_q', type=int, default=320)
 
+def save_opt(opt, logf):
+    """Print and save options
+    It will print both current options and default values(if different).
+    It will save options into a text file / [checkpoints_dir] / opt.txt
+    """
+    message = ''
+    message += '----------------- Options ---------------\n'
+    for k, v in sorted(vars(opt).items()):
+        comment = ''
+        default = parser.get_default(k)
+        if v != default:
+            comment = '\t[default: %s]' % str(default)
+        message += '{:>25}: {:<30}{}\n'.format(str(k), str(v), comment)
+    message += '----------------- End -------------------'
+    print(message)
+    logf.write(message)
+    logf.write('\n')
+
 if __name__ == '__main__':
     opt = parser.parse_args()
+
     data_dir = 'res_by_temp/'
     dataset = DataSet(data_dir, opt)
 
@@ -45,7 +64,8 @@ if __name__ == '__main__':
     total_iter = 0
 
     logf = open(opt.logfile, 'w')
-
+    save_opt(opt, logf)
+    
     for epoch in range(opt.start_epoch, opt.end_epoch):
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration
