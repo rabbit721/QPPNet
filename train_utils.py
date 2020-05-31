@@ -1,5 +1,5 @@
 import numpy as np
-import collections, os, json
+import collections, os, json, pickle
 from attr_rel_dict import *
 
 # need a huge array
@@ -88,7 +88,6 @@ GET_INPUT = collections.defaultdict(lambda: get_basics, GET_INPUT)
 
 class DataSet():
     def __init__(self, data_dir, opt):
-        assert('res_by_temp/' == data_dir[-14:])
         fnames = os.listdir(data_dir)
         data = []
         for fname in fnames:
@@ -98,7 +97,14 @@ class DataSet():
         self.datasize = len(self.dataset)
         self.num_sample_per_q = opt.num_sample_per_q
         self.num_q = opt.num_q
-        self.mean_range_dict = self.normalize()
+
+        if not opt.test:
+            self.mean_range_dict = self.normalize()
+            with open('mean_range_dict.pickle', 'wb') as f:
+                pickle.dump(self.mean_range_dict, f)
+        else:
+            with open(opt.mean_range_dict, 'rb') as f:
+                self.mean_range_dict = pickle.load(f)
 
         print(self.mean_range_dict)
         self.batch_size = opt.batch_size
@@ -136,7 +142,7 @@ class DataSet():
         with open(fname,'r') as f:
             for row in f:
                 newrow = row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
-                if 'CREATE' not in newrow and 'DROP' not in newrow:
+                if 'CREATE' not in newrow and 'DROP' not in newrow and 'Tim' != newrow[:3]:
                     curr += newrow
                 if prevprev is not None and 'Execution Time' in prevprev:
                     jsonstrs.append(curr.strip(' ').strip('QUERY PLAN').strip('-'))

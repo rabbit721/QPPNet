@@ -29,6 +29,8 @@ dim_dict = {'Seq Scan': num_rel + max_num_attr + 3 , 'Sort': 128 + 5 + 32,
 # Index Scan: never seen one; (Skip)
 # Aggregate: Strategy [one-hot 3], partial mode, operator (ignored)                  4 + 3 = 7
 
+def squared_diff(output, target):
+    return torch.sum((output - target)**2)
 
 ###############################################################################
 #                        Operator Neural Unit Architecture                    #
@@ -64,10 +66,10 @@ class NeuralUnit(nn.Module):
         dense_block += [nn.Linear(hidden_size, output_size), nn.ReLU()]
 
         for layer in dense_block:
-          try:
-            nn.init.xavier_uniform_(layer.weight)
-          except:
-            pass
+            try:
+                nn.init.xavier_uniform_(layer.weight)
+            except:
+                pass
         return nn.Sequential(*dense_block)
 
     def forward(self, x):
@@ -84,6 +86,9 @@ class QPPNet():
         self.device = torch.device('cuda:0') if torch.cuda.is_available() \
                                              else torch.device('cpu:0')
         self.save_dir = opt.save_dir
+        self.test = opt.test
+        self.batch_size = opt.batch_size
+
         self.last_total_loss = None
         if not os.path.exists(self.save_dir):
             os.mkdir(self.save_dir)
@@ -103,7 +108,7 @@ class QPPNet():
             self.optimizers[operator] = optimizer
             self.schedulers[operator] = sc
 
-        self.loss_fn = nn.MSELoss()
+        self.loss_fn = squared_diff
         # Initialize the global loss accumulator dict
         self.dummy = torch.zeros(1).to(self.device)
         self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
@@ -143,7 +148,8 @@ class QPPNet():
         #print("cat_res.shape", cat_res.shape)
         pred_time = torch.sum(cat_res, 1)
         #print("pred_time.shape", pred_time.shape)
-        #print(output_vec, samp_batch['total_time'])
+        if self.test:
+            print(samp_batch['node_type'], pred_time, samp_batch['total_time'])
 
         loss = self.loss_fn(pred_time,
                             torch.from_numpy(samp_batch['total_time']).to(self.device))
@@ -170,11 +176,11 @@ class QPPNet():
         for samp_dict in self.input:
             _ = self.forward_oneQ_batch(samp_dict)
 
-    def backward(self, batch_size):
+    def backward(self):
         total_loss = torch.zeros(1).to(self.device)
         for operator in self.acc_loss:
             #print(operator, self.acc_loss[operator])
-            op_loss = torch.sum(torch.cat(self.acc_loss[operator])) / batch_size
+            op_loss = torch.sum(torch.cat(self.acc_loss[operator])) / self.batch_size
             self.curr_losses[operator] = op_loss.item()
             total_loss += op_loss
 
@@ -186,10 +192,10 @@ class QPPNet():
             self.save_units('best')
         total_loss.backward()
 
-    def optimize_parameters(self, batch_size):
+    def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self.forward()
-        self.backward(batch_size)
+        self.backward()
         for operator in self.optimizers:
             self.optimizers[operator].step()
             self.schedulers[operator].step()

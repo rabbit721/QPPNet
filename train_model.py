@@ -27,6 +27,8 @@ parser.add_argument('-epoch_freq', '--save_latest_epoch_freq', type=int, default
 
 parser.add_argument('-logf', '--logfile', type=str, default='train_loss.txt')
 
+parser.add_argument('--test', action='store_true')
+parser.add_argument('--mean_range_dict', type=str)
 
 parser.add_argument('--num_q', type=int, default=22)
 parser.add_argument('--num_sample_per_q', type=int, default=320)
@@ -53,7 +55,7 @@ if __name__ == '__main__':
         total_iter += opt.batch_size
 
         qpp.set_input(samp_dicts)
-        qpp.optimize_parameters(opt.batch_size)
+        qpp.optimize_parameters()
         logf.write("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
                    + '; total_loss: {}; '.format(qpp.last_total_loss))
         print("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
