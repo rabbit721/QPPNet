@@ -99,14 +99,20 @@ class QPPNet():
         self.best = 100000
         for operator in dim_dict:
             self.units[operator] = NeuralUnit(operator).to(self.device)
-            optimizer = torch.optim.Adam(self.units[operator].parameters(),
-                                         opt.lr) #opt.lr
-            #optimizer = torch.optim.SGD(self.units[operator].parameters(),
-            #                            lr=opt.lr, momentum=0.9)
-            sc = lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.95)
+            if opt.SGD:
+                optimizer = torch.optim.SGD(self.units[operator].parameters(),
+                                            lr=opt.lr, momentum=0.9)
+            else:
+                optimizer = torch.optim.Adam(self.units[operator].parameters(),
+                                             opt.lr) #opt.lr
+
+            if opt.scheduler:
+                sc = lr_scheduler.StepLR(optimizer, step_size=opt.step_size,
+                                        gamma=opt.gamma)
+                self.schedulers[operator] = sc
 
             self.optimizers[operator] = optimizer
-            self.schedulers[operator] = sc
+
 
         self.loss_fn = squared_diff
         # Initialize the global loss accumulator dict
@@ -126,8 +132,8 @@ class QPPNet():
 
         return output_vec, where 1st col is predicted time
         '''
-        input_vec = samp_batch['feat_vec']
-        input_vec = torch.from_numpy(input_vec).to(self.device)
+        feat_vec = samp_batch['feat_vec']
+        input_vec = torch.from_numpy(feat_vec).to(self.device)
         #print(samp_batch['node_type'], input_vec)
         subplans_time = []
         for child_plan_dict in samp_batch['children_plan']:
@@ -161,6 +167,7 @@ class QPPNet():
         try:
             assert(not (torch.isnan(output_vec).any()))
         except:
+            print("feat_vec", feat_vec, "input_vec", input_vec)
             if torch.cuda.is_available():
                 print(samp_batch['node_type'], "output_vec: ", output_vec,
                       self.units[samp_batch['node_type']].module.cpu().state_dict())
@@ -213,10 +220,16 @@ class QPPNet():
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self.forward()
+        # clear prev grad first
+        for operator in self.optimizers:
+            self.optimizers[operator].zero_grad()
+
         self.backward()
+
         for operator in self.optimizers:
             self.optimizers[operator].step()
-            self.schedulers[operator].step()
+            if len(self.schedulers) > 0:
+                self.schedulers[operator].step()
 
     def get_current_losses(self):
         return self.curr_losses

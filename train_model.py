@@ -11,8 +11,20 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 parser.add_argument('-dir', '--save_dir', type=str, default='./saved_model',
                     help='Dir to save model weights (default: ./saved_model)')
 
-parser.add_argument('--lr', type=float, default=1e-4,
+parser.add_argument('--lr', type=float, default=1e-3,
                     help='Learning rate (default: 1e-3)')
+
+parser.add_argument('--scheduler', action='store_true')
+parser.add_argument('--step_size', type=int, default=1000,
+                    help='step_size for StepLR scheduler (default: 1000)')
+
+parser.add_argument('--gamma', type=float, default=0.95,
+                    help='gamma in Adam (default: 0.95)')
+
+parser.add_argument('--SGD', action='store_true',
+                    help='Use SGD as optimizer with momentum 0.9')
+
+
 
 parser.add_argument('--batch_size', type=int, default=32,
                     help='Batch size used in training (default: 32)')
@@ -65,7 +77,7 @@ if __name__ == '__main__':
 
     logf = open(opt.logfile, 'w')
     save_opt(opt, logf)
-    
+
     for epoch in range(opt.start_epoch, opt.end_epoch):
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration
