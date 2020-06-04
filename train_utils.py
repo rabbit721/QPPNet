@@ -88,15 +88,25 @@ GET_INPUT = collections.defaultdict(lambda: get_basics, GET_INPUT)
 
 class DataSet():
     def __init__(self, data_dir, opt):
-        fnames = os.listdir(data_dir)
+        self.num_sample_per_q = opt.num_sample_per_q
+        self.batch_size = opt.batch_size
+        self.num_q = opt.num_q
+
+        fnames = [fname for fname in os.listdir(data_dir) if 'csv' in fname]
         data = []
-        for fname in fnames:
-            if 'csv' in fname:
-              data += self.get_all_plans(data_dir + fname)
+        self.grp_idxes = []
+        self.num_grps = [0] * self.num_q
+        for i, fname in enumerate(fnames):
+            temp_data = self.get_all_plans(data_dir + fname)
+            print(temp_data)
+            data += temp_data
+            enum, num_grp = self.grouping(temp_data)
+            self.grp_idxes += enum
+            self.num_grps[i] = num_grp
+            print(num_grp)
         self.dataset = data
         self.datasize = len(self.dataset)
-        self.num_sample_per_q = opt.num_sample_per_q
-        self.num_q = opt.num_q
+        print(self.num_grps)
 
         if not opt.test:
             self.mean_range_dict = self.normalize()
@@ -107,7 +117,7 @@ class DataSet():
                 self.mean_range_dict = pickle.load(f)
 
         print(self.mean_range_dict)
-        self.batch_size = opt.batch_size
+
 
     def normalize(self): # compute the mean and std vec of each operator
         feat_vec_col = {operator : [] for operator in all_dicts}
@@ -120,8 +130,16 @@ class DataSet():
             feat_vec_col[data[0]["Node Type"]].append(np.array(feat_vec).astype(np.float32))
 
         for i in range(self.datasize // self.num_sample_per_q):
-            parse_input(self.dataset[i*self.num_sample_per_q:(i+1)*self.num_sample_per_q])
-
+            if self.num_grps[i] == 1:
+                parse_input(self.dataset[i*self.num_sample_per_q:(i+1)*self.num_sample_per_q])
+            else:
+                groups = [[] for j in range(self.num_grps[i])]
+                offset = i*self.num_sample_per_q
+                for j, plan_dict in enumerate(self.dataset[offset:offset+self.num_sample_per_q]):
+                    groups[self.grp_idxes[offset + j]].append(plan_dict)
+                for grp in groups:
+                    parse_input(grp)
+                    
         def cmp_mean_range(feat_vec_lst):
           if len(feat_vec_lst) == 0:
             return (0, 1)
@@ -134,6 +152,7 @@ class DataSet():
                          for operator in all_dicts}
         return mean_range_dict
 
+
     def get_all_plans(self, fname):
         jsonstrs = []
         curr = ""
@@ -141,6 +160,8 @@ class DataSet():
         prevprev = None
         with open(fname,'r') as f:
             for row in f:
+                if len(row) == 0:
+                    continue
                 newrow = row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
                 if 'CREATE' not in newrow and 'DROP' not in newrow and 'Tim' != newrow[:3]:
                     curr += newrow
@@ -149,10 +170,36 @@ class DataSet():
                     curr = ""
                 prevprev = prev
                 prev = newrow
+        #print(prevprev, prev)
         strings = [s for s in jsonstrs if s[-1] == ']']
         jss = [json.loads(s)[0]['Plan'] for s in strings]
         # jss is a list of json-transformed dicts, one for each query
         return jss
+
+    def grouping(self, data):
+        def hash(plan_dict):
+            res = plan_dict['Node Type']
+            if 'Plans' in plan_dict:
+                for chld in plan_dict['Plans']:
+                    res += hash(chld)
+            return res
+        counter = 0
+        string_hash = []
+        enum = []
+        for plan_dict in data:
+            string = hash(plan_dict)
+            #print(string)
+            try:
+                idx = string_hash.index(string)
+                enum.append(idx)
+            except:
+                idx = counter
+                counter += 1
+                enum.append(idx)
+                string_hash.append(string)
+        #print(string_hash, counter)
+        assert(counter>0)
+        return enum, counter
 
     def get_input(self, data, i): # Helper for sample_data
         """
@@ -202,9 +249,17 @@ class DataSet():
         # dataset: all queries used in training
         samp = np.random.choice(np.arange(self.datasize), self.batch_size, replace=False)
         #print(samp)
-        samp_group = [[] for _ in range(self.num_q)]
+        samp_group = [[[] for j in range(self.num_grps[i])]
+                                for i in range(self.num_q)]
         for idx in samp:
             # assuming we have 32 queries from each template
-            samp_group[idx // self.num_sample_per_q].append(self.dataset[idx])
+            grp_idx = self.grp_idxes[idx]
+            samp_group[idx // self.num_sample_per_q][grp_idx].append(self.dataset[idx])
 
-        return [self.get_input(grp, i) for i, grp in enumerate(samp_group) if len(grp) != 0]
+        parsed_input = []
+        for i, temp in enumerate(samp_group):
+            for grp in temp:
+                if len(grp) != 0:
+                    parsed_input.append(self.get_input(grp, i))
+        #print(parsed_input)
+        return parsed_input

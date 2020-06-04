@@ -14,7 +14,7 @@ basic = 3
 # this is from examining the tpch output
 dim_dict = {'Seq Scan': num_rel + max_num_attr + 3 , 'Sort': 128 + 5 + 32,
             'Hash': 4 + 32,
-            'Hash Join': 10 + 32 * 2, 'Merge Join': 10 + 32 * 2,
+            'Hash Join': 11 + 32 * 2, 'Merge Join': 10 + 32 * 2,
             'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
             'Subquery Scan': 32 + 3,
             'Materialize': 32 + 3, 'Gather Merge': 32 + 3, 'Gather': 32 + 3}
@@ -24,7 +24,7 @@ dim_dict = {'Seq Scan': num_rel + max_num_attr + 3 , 'Sort': 128 + 5 + 32,
 
 # Sort: sort key [one-hot 128], sort method [one-hot 2];                             2 + 3 = 5
 # Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
-# Hash Join: Join type [one-hot 4], parent relationship [one-hot 3];                 7 + 3 = 10
+# Hash Join: Join type [one-hot 5], parent relationship [one-hot 3];                 8 + 3 = 11
 # Scan: relation name [one-hot ?]; attr min, med, max; [use one-hot instead]         4 + 3 = 7
 # Index Scan: never seen one; (Skip)
 # Aggregate: Strategy [one-hot 3], partial mode, operator (ignored)                  4 + 3 = 7
@@ -132,6 +132,7 @@ class QPPNet():
 
         return output_vec, where 1st col is predicted time
         '''
+        #print(samp_batch)
         feat_vec = samp_batch['feat_vec']
         input_vec = torch.from_numpy(feat_vec).to(self.device)
         #print(samp_batch['node_type'], input_vec)

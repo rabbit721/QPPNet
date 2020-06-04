@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     total_iter = 0
 
-    logf = open(opt.logfile, 'w')
+    logf = open(opt.logfile, 'w+')
     save_opt(opt, logf)
 
     for epoch in range(opt.start_epoch, opt.end_epoch):

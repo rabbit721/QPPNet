@@ -1,20 +1,10 @@
-# basic input:
-# plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
-
-# Sort: sort key [one-hot (num_rel * max_num_attr = 128)],
-#       sort method [one-hot 2];                                                     128 + 2 + 3 = 133
-# Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
-# Hash Join: Join type [one-hot 4], parent relationship [one-hot 3];                 7 + 3 = 10
-# Scan: relation name [one-hot 8]; attr min, med, max; [use one-hot instead 16]      8 + 16 + 3 = 27
-# Index Scan: haven't seen one in TPC-H; (Skip)
-# Aggregate: Strategy [one-hot 3], partial mode [true/false], operator (ignored)     4 + 3 = 7
 
 # all operators used in tpc-h
 all_dicts = ['Aggregate', 'Gather Merge', 'Sort', 'Seq Scan', 'Limit',
              'Hash Join', 'Hash', 'Nested Loop', 'Materialize', 'Merge Join',
              'Subquery Scan', 'Gather']
 
-join_types = ['semi', 'inner', 'anti', 'full']
+join_types = ['semi', 'inner', 'anti', 'full', 'right']
 
 parent_rel_types = ['inner', 'outer', 'subquery']
 
