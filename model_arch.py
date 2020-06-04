@@ -86,7 +86,8 @@ class QPPNet():
         self.device = torch.device('cuda:0') if torch.cuda.is_available() \
                                              else torch.device('cpu:0')
         self.save_dir = opt.save_dir
-        self.test = opt.test
+        self.test = False
+        self.test_time = opt.test_time
         self.batch_size = opt.batch_size
 
         self.last_total_loss = None
@@ -138,7 +139,7 @@ class QPPNet():
         #print(samp_batch['node_type'], input_vec)
         subplans_time = []
         for child_plan_dict in samp_batch['children_plan']:
-            child_output_vec = self.forward_oneQ_batch(child_plan_dict)
+            child_output_vec, _ = self.forward_oneQ_batch(child_plan_dict)
             if not child_plan_dict['is_subplan']:
                 input_vec = torch.cat((input_vec, child_output_vec),axis=1)
                 # first dim is subbatch_size
@@ -156,7 +157,7 @@ class QPPNet():
         #print("cat_res.shape", cat_res.shape)
         pred_time = torch.sum(cat_res, 1)
         #print("pred_time.shape", pred_time.shape)
-        if self.test:
+        if self.test_time:
             print(samp_batch['node_type'], pred_time, samp_batch['total_time'])
 
         loss = (pred_time -
@@ -176,20 +177,26 @@ class QPPNet():
                 print(samp_batch['node_type'], "output_vec: ", output_vec,
                       self.units[samp_batch['node_type']].cpu().state_dict())
             exit(-1)
-        return output_vec
+        return output_vec, pred_time
 
     def forward(self):
         # # self.input is a list of preprocessed plan_vec_dict
         total_loss = torch.zeros(1).to(self.device)
         total_losses = {operator: [torch.zeros(1).to(self.device)] \
                                             for operator in dim_dict}
+        if self.test:
+            test_loss = []
 
         for samp_dict in self.input:
             # first clear prev computed losses
             del self.acc_loss
             self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
 
-            _ = self.forward_oneQ_batch(samp_dict)
+            _, pred_time = self.forward_oneQ_batch(samp_dict)
+            if self.test:
+                test_loss.append(torch.abs(torch.from_numpy(samp_dict['total_time']).to(self.device)
+                                           - pred_time))
+
             D_size = 0
             subbatch_loss = torch.zeros(1).to(self.device)
             for operator in self.acc_loss:
@@ -205,8 +212,14 @@ class QPPNet():
             #print("subbatch_loss.shape",subbatch_loss.shape)
             total_loss += subbatch_loss * samp_dict['subbatch_size']
 
-        self.curr_losses = {operator: torch.mean(torch.cat(total_losses[operator])).item() for operator in dim_dict}
-        self.total_loss = torch.mean(total_loss / self.batch_size)
+        if self.test:
+            all_test_loss = torch.cat(test_loss)
+            print(test_loss[0].shape, test_loss[1].shape, all_test_loss.shape)
+            all_test_loss = torch.mean(all_test_loss)
+            self.test_loss = all_test_loss
+        else:
+            self.curr_losses = {operator: torch.mean(torch.cat(total_losses[operator])).item() for operator in dim_dict}
+            self.total_loss = torch.mean(total_loss / self.batch_size)
         #print("self.total_loss.shape", self.total_loss.shape)
 
     def backward(self):
@@ -220,6 +233,7 @@ class QPPNet():
 
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
+        self.test = False
         self.forward()
         # clear prev grad first
         for operator in self.optimizers:
@@ -231,6 +245,16 @@ class QPPNet():
             self.optimizers[operator].step()
             if len(self.schedulers) > 0:
                 self.schedulers[operator].step()
+
+        self.input = self.test_dataset
+        self.test = True
+        self.forward()
+        self.last_test_loss = self.test_loss.item()
+        self.test_loss = None
+
+    def evaluate(self):
+        self.test = True
+        self.forward()
 
     def get_current_losses(self):
         return self.curr_losses

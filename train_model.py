@@ -8,6 +8,12 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 
 # Environment arguments
 # required
+parser.add_argument('--test_data_dir', type=str, default='./test',
+                    help='Dir containing test data')
+
+parser.add_argument('--test_time', action='store_true',
+                    help='if in testing mode')
+
 parser.add_argument('-dir', '--save_dir', type=str, default='./saved_model',
                     help='Dir to save model weights (default: ./saved_model)')
 
@@ -89,9 +95,9 @@ if __name__ == '__main__':
         qpp.set_input(samp_dicts)
         qpp.optimize_parameters()
         logf.write("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
-                   + '; total_loss: {}; '.format(qpp.last_total_loss))
+                   + '; total_loss: {}; test_loss: {}'.format(qpp.last_total_loss, qpp.last_test_loss))
         print("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
-              + '; total_loss: {}; '.format(qpp.last_total_loss))
+              + '; total_loss: {}; test_loss: {}'.format(qpp.last_total_loss, qpp.last_test_loss))
 
         #if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
         losses = qpp.get_current_losses()

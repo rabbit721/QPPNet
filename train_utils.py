@@ -98,17 +98,17 @@ class DataSet():
         self.num_grps = [0] * self.num_q
         for i, fname in enumerate(fnames):
             temp_data = self.get_all_plans(data_dir + fname)
-            print(temp_data)
+            #print(temp_data)
             data += temp_data
             enum, num_grp = self.grouping(temp_data)
             self.grp_idxes += enum
             self.num_grps[i] = num_grp
-            print(num_grp)
+            #print(num_grp)
         self.dataset = data
         self.datasize = len(self.dataset)
         print(self.num_grps)
 
-        if not opt.test:
+        if not opt.test_time:
             self.mean_range_dict = self.normalize()
             with open('mean_range_dict.pickle', 'wb') as f:
                 pickle.dump(self.mean_range_dict, f)
@@ -139,7 +139,7 @@ class DataSet():
                     groups[self.grp_idxes[offset + j]].append(plan_dict)
                 for grp in groups:
                     parse_input(grp)
-                    
+
         def cmp_mean_range(feat_vec_lst):
           if len(feat_vec_lst) == 0:
             return (0, 1)
@@ -263,3 +263,17 @@ class DataSet():
                     parsed_input.append(self.get_input(grp, i))
         #print(parsed_input)
         return parsed_input
+
+    def create_test_data(self, opt):
+        fnames = [fname for fname in os.listdir(opt.test_data_dir) if 'csv' in fname]
+        data = []
+        all_groups = []
+        for i, fname in enumerate(fnames):
+            temp_data = self.get_all_plans(opt.test_data_dir + fname)
+            enum, num_grp = self.grouping(temp_data)
+            groups = [[] for j in range(num_grp)]
+            for j, grp_idx in enumerate(enum):
+                groups[grp_idx].append(temp_data[j])
+            all_groups += groups
+        test_dataset = [self.get_input(grp, 'dum') for grp in all_groups]
+        return test_dataset
