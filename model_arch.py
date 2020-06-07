@@ -184,7 +184,7 @@ class QPPNet():
             exit(-1)
         return output_vec, pred_time
 
-    def forward(self):
+    def forward(self, epoch):
         # # self.input is a list of preprocessed plan_vec_dict
         total_loss = torch.zeros(1).to(self.device)
         total_losses = {operator: [torch.zeros(1).to(self.device)] \
@@ -193,7 +193,7 @@ class QPPNet():
             test_loss = []
             pred_err = []
 
-        for samp_dict in self.input:
+        for idx, samp_dict in enumerate(self.input):
             # first clear prev computed losses
             del self.acc_loss
             self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
@@ -203,6 +203,13 @@ class QPPNet():
                 tt = torch.from_numpy(samp_dict['total_time']).to(self.device)
                 test_loss.append(torch.abs(tt - pred_time))
                 pred_err.append(torch.abs(tt - pred_time)/tt)
+                if epoch % 50 == 0:
+                    print("####### eval by temp: idx {}, test_loss {}, pred_err {}, "\
+                      "rq {} ".format(idx, torch.mean(torch.abs(tt - pred_time)).item(),
+                              torch.mean(torch.abs(tt - pred_time)/tt).item(),
+                              torch.max(torch.cat([tt/(pred_time+torch.finfo(tt.dtype).eps),
+                                                   pred_time/(tt+torch.finfo(tt.dtype).eps)])).item()))
+
                 self.rq = max(torch.max(torch.cat([tt/(pred_time+torch.finfo(tt.dtype).eps),
                                                    pred_time/(tt+torch.finfo(tt.dtype).eps)])).item(), self.rq)
 
@@ -242,10 +249,10 @@ class QPPNet():
         self.total_loss.backward()
         self.total_loss = None
 
-    def optimize_parameters(self):
+    def optimize_parameters(self, epoch):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self.test = False
-        self.forward()
+        self.forward(epoch)
         # clear prev grad first
         for operator in self.optimizers:
             self.optimizers[operator].zero_grad()
@@ -259,7 +266,7 @@ class QPPNet():
 
         self.input = self.test_dataset
         self.test = True
-        self.forward()
+        self.forward(epoch)
         self.last_test_loss = self.test_loss.item()
         self.last_pred_err = self.pred_err.item()
         self.last_rq = self.rq

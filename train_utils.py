@@ -87,17 +87,20 @@ GET_INPUT = collections.defaultdict(lambda: get_basics, GET_INPUT)
 ###############################################################################
 
 class DataSet():
-    def __init__(self, data_dir, opt):
+    def __init__(self, opt):
         self.num_sample_per_q = opt.num_sample_per_q
         self.batch_size = opt.batch_size
         self.num_q = opt.num_q
 
-        fnames = [fname for fname in os.listdir(data_dir) if 'csv' in fname]
+        fnames = [fname for fname in os.listdir(opt.data_dir) if 'csv' in fname]
+        fnames = sorted(fnames,
+                        key=lambda fname: int(fname.split('temp')[1][:-4]))
+
         data = []
         self.grp_idxes = []
         self.num_grps = [0] * self.num_q
         for i, fname in enumerate(fnames):
-            temp_data = self.get_all_plans(data_dir + fname)
+            temp_data = self.get_all_plans(opt.data_dir + fname)
             #print(temp_data)
             data += temp_data
             enum, num_grp = self.grouping(temp_data)
@@ -266,6 +269,8 @@ class DataSet():
 
     def create_test_data(self, opt):
         fnames = [fname for fname in os.listdir(opt.test_data_dir) if 'csv' in fname]
+        fnames = sorted(fnames,
+                        key=lambda fname: int(fname.split('temp')[1][:-4]))
         data = []
         all_groups = []
         for i, fname in enumerate(fnames):

@@ -8,6 +8,10 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 
 # Environment arguments
 # required
+
+parser.add_argument('--data_dir', type=str, default='./res_by_temp/',
+                    help='Dir containing train data')
+
 parser.add_argument('--test_data_dir', type=str, default='./test/',
                     help='Dir containing test data')
 
@@ -73,7 +77,7 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     data_dir = 'res_by_temp/'
-    dataset = DataSet(data_dir, opt)
+    dataset = DataSet(opt)
 
     print("dataset_size", dataset.datasize)
     torch.set_default_tensor_type(torch.FloatTensor)
@@ -94,7 +98,7 @@ if __name__ == '__main__':
         total_iter += opt.batch_size
 
         qpp.set_input(samp_dicts)
-        qpp.optimize_parameters()
+        qpp.optimize_parameters(epoch)
         logf.write("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
                    + '; total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
                    .format(qpp.last_total_loss, qpp.last_test_loss,
