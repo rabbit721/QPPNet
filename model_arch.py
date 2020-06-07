@@ -91,6 +91,11 @@ class QPPNet():
         self.batch_size = opt.batch_size
 
         self.last_total_loss = None
+        self.last_pred_err = None
+        self.pred_err = None
+        self.rq = 0
+        self.last_rq = 0
+
         if not os.path.exists(self.save_dir):
             os.mkdir(self.save_dir)
 
@@ -186,6 +191,7 @@ class QPPNet():
                                             for operator in dim_dict}
         if self.test:
             test_loss = []
+            pred_err = []
 
         for samp_dict in self.input:
             # first clear prev computed losses
@@ -194,8 +200,11 @@ class QPPNet():
 
             _, pred_time = self.forward_oneQ_batch(samp_dict)
             if self.test:
-                test_loss.append(torch.abs(torch.from_numpy(samp_dict['total_time']).to(self.device)
-                                           - pred_time))
+                tt = torch.from_numpy(samp_dict['total_time']).to(self.device)
+                test_loss.append(torch.abs(tt - pred_time))
+                pred_err.append(torch.abs(tt - pred_time)/tt)
+                self.rq = max(torch.max(torch.cat([tt/(pred_time+torch.finfo(tt.dtype).eps),
+                                                   pred_time/(tt+torch.finfo(tt.dtype).eps)])).item(), self.rq)
 
             D_size = 0
             subbatch_loss = torch.zeros(1).to(self.device)
@@ -214,16 +223,18 @@ class QPPNet():
 
         if self.test:
             all_test_loss = torch.cat(test_loss)
-            print(test_loss[0].shape, test_loss[1].shape, all_test_loss.shape)
+            #print(test_loss[0].shape, test_loss[1].shape, all_test_loss.shape)
             all_test_loss = torch.mean(all_test_loss)
             self.test_loss = all_test_loss
+
+            all_pred_err = torch.cat(pred_err)
+            self.pred_err = torch.mean(all_pred_err)
         else:
             self.curr_losses = {operator: torch.mean(torch.cat(total_losses[operator])).item() for operator in dim_dict}
             self.total_loss = torch.mean(total_loss / self.batch_size)
         #print("self.total_loss.shape", self.total_loss.shape)
 
     def backward(self):
-        print("total loss: ", self.total_loss.item())
         self.last_total_loss = self.total_loss.item()
         if self.best > self.total_loss.item():
             self.best = self.total_loss.item()
@@ -250,7 +261,10 @@ class QPPNet():
         self.test = True
         self.forward()
         self.last_test_loss = self.test_loss.item()
-        self.test_loss = None
+        self.last_pred_err = self.pred_err.item()
+        self.last_rq = self.rq
+        self.test_loss, self.pred_err = None, None
+        self.rq = 0
 
     def evaluate(self):
         self.test = True

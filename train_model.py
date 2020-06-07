@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 
 # Environment arguments
 # required
-parser.add_argument('--test_data_dir', type=str, default='./test',
+parser.add_argument('--test_data_dir', type=str, default='./test/',
                     help='Dir containing test data')
 
 parser.add_argument('--test_time', action='store_true',
@@ -83,6 +83,7 @@ if __name__ == '__main__':
 
     logf = open(opt.logfile, 'w+')
     save_opt(opt, logf)
+    qpp.test_dataset = dataset.create_test_data(opt)
 
     for epoch in range(opt.start_epoch, opt.end_epoch):
         epoch_start_time = time.time()  # timer for entire epoch
@@ -95,16 +96,23 @@ if __name__ == '__main__':
         qpp.set_input(samp_dicts)
         qpp.optimize_parameters()
         logf.write("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
-                   + '; total_loss: {}; test_loss: {}'.format(qpp.last_total_loss, qpp.last_test_loss))
-        print("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
-              + '; total_loss: {}; test_loss: {}'.format(qpp.last_total_loss, qpp.last_test_loss))
+                   + '; total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
+                   .format(qpp.last_total_loss, qpp.last_test_loss,
+                           qpp.last_pred_err, qpp.last_rq))
 
         #if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
         losses = qpp.get_current_losses()
         loss_str = "losses: "
         for op in losses:
           loss_str += str(op) + " [" + str(losses[op]) + "]; "
-        print(loss_str)
+
+        if epoch % 50 == 0:
+            print("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
+                  + '; total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
+                  .format(qpp.last_total_loss, qpp.last_test_loss,
+                          qpp.last_pred_err, qpp.last_rq))
+            print(loss_str)
+
 
         logf.write(loss_str + '\n')
 
