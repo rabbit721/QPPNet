@@ -1,12 +1,15 @@
 import numpy as np
 import collections, os, json, pickle
 from attr_rel_dict import *
+import pickle
 
 # need a huge array
 # get the columns of all relations
 num_rel = 8
 max_num_attr = 16
 
+with open('attr_val_dict.pickle', 'rb') as f:
+    attr_val_dict = pickle.load(f)
 
 
 # need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
@@ -20,18 +23,23 @@ def get_rel_one_hot(rel_name):
     return arr
 
 def get_rel_attr_one_hot(rel_name, filter_line):
-    arr = [0] * max_num_attr
     attr_list = rel_attr_list_dict[rel_name]
+
+    med_vec, min_vec, max_vec = [0] * max_num_attr, [0] * max_num_attr,
+                                [0] * max_num_attr
+
     for idx, attr in enumerate(attr_list):
         if attr in filter_line:
-            arr[idx] = 1
-    return arr
+            med_vec[idx] = attr_val_dict['med'][rel_name][idx]
+            min_vec[idx] = attr_val_dict['min'][rel_name][idx]
+            max_vec[idx] = attr_val_dict['max'][rel_name][idx]
+    return min_vec + med_vec + max_vec
 
 def get_seq_scan_input(plan_dict):
     # plan_dict: dict where the plan_dict['node_type'] = 'Seq Scan'
     rel_vec = get_rel_one_hot(plan_dict['Relation Name'])
     if 'Filter' not in plan_dict:
-        rel_attr_vec = [0] * max_num_attr
+        rel_attr_vec = [0] * max_num_attr * 3
     else:
         rel_attr_vec = get_rel_attr_one_hot(plan_dict['Relation Name'],
                                             plan_dict['Filter'])
