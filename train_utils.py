@@ -7,6 +7,8 @@ from attr_rel_dict import *
 num_rel = 8
 max_num_attr = 16
 
+
+
 # need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
 def get_basics(plan_dict):
     return [plan_dict['Plan Width'], plan_dict['Plan Rows'],
@@ -54,14 +56,18 @@ def get_sort_key_input(plan_dict):
         for subkey in key.split(" "):
             if subkey != ' ' and '.' in subkey:
                 rel_name, attr_name = subkey.split(' ')[0].split('.')
-                one_hot[rel_names.index(rel_name) * max_num_attr
-                        + rel_attr_list_dict[rel_name].index(attr_name.lower())] = 1
+                if rel_name in rel_names:
+                    one_hot[rel_names.index(rel_name) * max_num_attr
+                            + rel_attr_list_dict[rel_name].index(attr_name.lower())] = 1
 
     return one_hot
 
 def get_sort_input(plan_dict):
     sort_meth = [0] * len(sort_algos)
-    sort_meth[sort_algos.index(plan_dict['Sort Method'].lower())] = 1
+    if 'Sort Method' in plan_dict:
+        if "external" not in plan_dict['Sort Method'].lower():
+            sort_meth[sort_algos.index(plan_dict['Sort Method'].lower())] = 1
+
     return get_basics(plan_dict) + get_sort_key_input(plan_dict) + sort_meth
 
 def get_aggreg_input(plan_dict):
@@ -88,7 +94,7 @@ GET_INPUT = collections.defaultdict(lambda: get_basics, GET_INPUT)
 
 class DataSet():
     def __init__(self, opt):
-        self.num_sample_per_q = opt.num_sample_per_q
+        self.num_sample_per_q = int(opt.num_sample_per_q * 0.9)
         self.batch_size = opt.batch_size
         self.num_q = opt.num_q
 
@@ -97,22 +103,36 @@ class DataSet():
                         key=lambda fname: int(fname.split('temp')[1][:-4]))
 
         data = []
+        all_groups_test = []
+
         self.grp_idxes = []
         self.num_grps = [0] * self.num_q
         for i, fname in enumerate(fnames):
             temp_data = self.get_all_plans(opt.data_dir + fname)
             #print(temp_data)
-            data += temp_data
-            enum, num_grp = self.grouping(temp_data)
+            data += temp_data[:self.num_sample_per_q]
+
+            ##### this is for train #####
+            enum, num_grp = self.grouping(temp_data[:self.num_sample_per_q])
             self.grp_idxes += enum
             self.num_grps[i] = num_grp
+
+            ##### this is for test #####
+            enum, num_grp = self.grouping(temp_data[self.num_sample_per_q:])
+            groups = [[] for j in range(num_grp)]
+            for j, grp_idx in enumerate(enum):
+                groups[grp_idx].append(temp_data[self.num_sample_per_q+j])
+            all_groups_test += groups
+
             #print(num_grp)
+
         self.dataset = data
         self.datasize = len(self.dataset)
         print(self.num_grps)
 
         if not opt.test_time:
             self.mean_range_dict = self.normalize()
+
             with open('mean_range_dict.pickle', 'wb') as f:
                 pickle.dump(self.mean_range_dict, f)
         else:
@@ -121,6 +141,8 @@ class DataSet():
 
         print(self.mean_range_dict)
 
+        test_dataset = [self.get_input(grp, 'dum') for grp in all_groups_test]
+        self.test_dataset = test_dataset
 
     def normalize(self): # compute the mean and std vec of each operator
         feat_vec_col = {operator : [] for operator in all_dicts}
@@ -133,15 +155,18 @@ class DataSet():
             feat_vec_col[data[0]["Node Type"]].append(np.array(feat_vec).astype(np.float32))
 
         for i in range(self.datasize // self.num_sample_per_q):
-            if self.num_grps[i] == 1:
-                parse_input(self.dataset[i*self.num_sample_per_q:(i+1)*self.num_sample_per_q])
-            else:
-                groups = [[] for j in range(self.num_grps[i])]
-                offset = i*self.num_sample_per_q
-                for j, plan_dict in enumerate(self.dataset[offset:offset+self.num_sample_per_q]):
-                    groups[self.grp_idxes[offset + j]].append(plan_dict)
-                for grp in groups:
-                    parse_input(grp)
+            try:
+                if self.num_grps[i] == 1:
+                    parse_input(self.dataset[i*self.num_sample_per_q:(i+1)*self.num_sample_per_q])
+                else:
+                    groups = [[] for j in range(self.num_grps[i])]
+                    offset = i*self.num_sample_per_q
+                    for j, plan_dict in enumerate(self.dataset[offset:offset+self.num_sample_per_q]):
+                        groups[self.grp_idxes[offset + j]].append(plan_dict)
+                    for grp in groups:
+                        parse_input(grp)
+            except:
+                print('i: {}'.format(i))
 
         def cmp_mean_range(feat_vec_lst):
           if len(feat_vec_lst) == 0:
@@ -267,6 +292,7 @@ class DataSet():
         #print(parsed_input)
         return parsed_input
 
+    '''
     def create_test_data(self, opt):
         fnames = [fname for fname in os.listdir(opt.test_data_dir) if 'csv' in fname]
         fnames = sorted(fnames,
@@ -282,3 +308,4 @@ class DataSet():
             all_groups += groups
         test_dataset = [self.get_input(grp, 'dum') for grp in all_groups]
         return test_dataset
+    '''

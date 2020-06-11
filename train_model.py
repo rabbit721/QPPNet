@@ -11,9 +11,10 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 
 parser.add_argument('--data_dir', type=str, default='./res_by_temp/',
                     help='Dir containing train data')
-
+'''
 parser.add_argument('--test_data_dir', type=str, default='./test/',
                     help='Dir containing test data')
+'''
 
 parser.add_argument('--test_time', action='store_true',
                     help='if in testing mode')
@@ -87,7 +88,9 @@ if __name__ == '__main__':
 
     logf = open(opt.logfile, 'w+')
     save_opt(opt, logf)
-    qpp.test_dataset = dataset.create_test_data(opt)
+
+    #qpp.test_dataset = dataset.create_test_data(opt)
+    qpp.test_dataset = dataset.test_dataset
 
     for epoch in range(opt.start_epoch, opt.end_epoch):
         epoch_start_time = time.time()  # timer for entire epoch

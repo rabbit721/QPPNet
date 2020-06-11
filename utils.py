@@ -61,14 +61,15 @@ def get_time_mean_var(data_dir):
     fnames.sort()
     names = []
     for i, fname in fnames:
-        #if i == 17 or i == 20: ontinue
+        if i >= 20: continue
         arr = np.array(get_time(data_dir + fname))
         all_time.append(arr)
         print(fname, "mean: ", np.mean(arr), 'variance: ', np.var(arr))
         names.append(str(i))
     all_time = np.array(all_time).astype(np.float32)
     print(all_time.shape)
-
+    plt.boxplot(all_time.T, labels=names)
+    '''
     f, axes = plt.subplots(2, 2, sharey=False, squeeze=False)
     f.set_figheight(10)
     f.set_figwidth(12.8)
@@ -77,7 +78,7 @@ def get_time_mean_var(data_dir):
     ax1.boxplot(all_time.T, labels=names)
 
     ax2.set_title('All Except 17, 20, 21')
-    idx = [i for i in range(22) if i !=16 and i!=19 and i!=20]
+    idx = [i for i in range(20) if i !=16 and i!=19 and i!=20]
     print(all_time[idx, :].T.shape, np.array(names)[idx].shape)
     ax2.boxplot(all_time[idx, :].T, labels=np.array(names)[idx])
 
@@ -85,11 +86,12 @@ def get_time_mean_var(data_dir):
     ax3.set_title('Temp 20, Mean: {}, Var: {}'.format(np.mean(all_time[19]), np.var(all_time[19])))
     ax3.boxplot(all_time[[19], :].T, labels=np.array(names)[[19]])
 
-    ax4.set_title('\nTemp 17, Mean: {}, Var: {}; \n Temp 21'\
+    ax4.set_title('\nTemp 17, Mean: {}, Var: {}'\
                   .format(np.mean(all_time[16]), np.var(all_time[16])))
-    ax4.boxplot(all_time[[16, 20], :].T, labels=np.array(names)[[16, 20]])
+    ax4.boxplot(all_time[[16], :].T, labels=np.array(names)[[16]])
     f.suptitle('TPC-H query exec time by temp (320 queries per temp)')
-    plt.savefig('tpch_exec_time_part2_plot.png')
+    '''
+    plt.savefig('tpch_exec_time_0^1SF.png')
 '''
 strings = [s for s in jsonstrs if s[-1] == ']']
 #
