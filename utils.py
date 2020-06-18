@@ -91,7 +91,7 @@ def get_time_mean_var(data_dir):
     ax4.boxplot(all_time[[16], :].T, labels=np.array(names)[[16]])
     f.suptitle('TPC-H query exec time by temp (320 queries per temp)')
     '''
-    plt.savefig('tpch_exec_time_0^1SF.png')
+    plt.savefig('tpch_exec_time_0-1SF.png')
 '''
 strings = [s for s in jsonstrs if s[-1] == ']']
 #

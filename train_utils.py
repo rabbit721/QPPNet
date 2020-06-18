@@ -7,6 +7,7 @@ import pickle
 # get the columns of all relations
 num_rel = 8
 max_num_attr = 16
+num_index = 23
 
 with open('attr_val_dict.pickle', 'rb') as f:
     attr_val_dict = pickle.load(f)
@@ -22,10 +23,15 @@ def get_rel_one_hot(rel_name):
     arr[rel_names.index(rel_name)] = 1
     return arr
 
+def get_index_one_hot(index_name):
+    arr = [0] * num_index
+    arr[index_names.index(index_name)] = 1
+    return arr
+
 def get_rel_attr_one_hot(rel_name, filter_line):
     attr_list = rel_attr_list_dict[rel_name]
 
-    med_vec, min_vec, max_vec = [0] * max_num_attr, [0] * max_num_attr,
+    med_vec, min_vec, max_vec = [0] * max_num_attr, [0] * max_num_attr, \
                                 [0] * max_num_attr
 
     for idx, attr in enumerate(attr_list):
@@ -35,15 +41,40 @@ def get_rel_attr_one_hot(rel_name, filter_line):
             max_vec[idx] = attr_val_dict['max'][rel_name][idx]
     return min_vec + med_vec + max_vec
 
-def get_seq_scan_input(plan_dict):
+def get_scan_input(plan_dict):
     # plan_dict: dict where the plan_dict['node_type'] = 'Seq Scan'
     rel_vec = get_rel_one_hot(plan_dict['Relation Name'])
-    if 'Filter' not in plan_dict:
-        rel_attr_vec = [0] * max_num_attr * 3
-    else:
+    try:
         rel_attr_vec = get_rel_attr_one_hot(plan_dict['Relation Name'],
                                             plan_dict['Filter'])
+    except:
+        print('************************* default *************************')
+        rel_attr_vec = [0] * max_num_attr * 3
+
     return get_basics(plan_dict) + rel_vec + rel_attr_vec
+
+
+def get_index_scan_input(plan_dict):
+    # plan_dict: dict where the plan_dict['node_type'] = 'Index Scan'
+
+    rel_vec = get_rel_one_hot(plan_dict['Relation Name'])
+    index_vec = get_index_one_hot(plan_dict['Index Name'])
+
+    try:
+        rel_attr_vec = get_rel_attr_one_hot(plan_dict['Relation Name'],
+                                            plan_dict['Index Cond'])
+    except:
+        print('********************* default rel_attr_vec *********************')
+        rel_attr_vec = [0] * max_num_attr * 3
+
+    return get_basics(plan_dict) + rel_vec + rel_attr_vec + index_vec \
+           + [1 if plan_dict['Scan Direction'] == 'Forward' else 0]
+
+def get_bitmap_index_scan_input(plan_dict):
+    # plan_dict: dict where the plan_dict['node_type'] = 'Bitmap Index Scan'
+    index_vec = get_index_one_hot(plan_dict['Index Name'])
+
+    return get_basics(plan_dict) + index_vec
 
 def get_hash_input(plan_dict):
     return get_basics(plan_dict) + [plan_dict['Hash Buckets']]
@@ -88,7 +119,10 @@ GET_INPUT = \
 {
     "Hash Join": get_join_input,
     "Merge Join": get_join_input,
-    "Seq Scan": get_seq_scan_input,
+    "Seq Scan": get_scan_input,
+    "Index Scan": get_index_scan_input,
+    "Bitmap Heap Scan": get_scan_input,
+    "Bitmap Index Scan": get_bitmap_index_scan_input,
     "Sort": get_sort_input,
     "Hash": get_hash_input,
     "Aggregate": get_aggreg_input
@@ -185,7 +219,7 @@ class DataSet():
                     np.max(total_vec, axis=0)+np.finfo(np.float32).eps)
 
         mean_range_dict = {operator : cmp_mean_range(feat_vec_col[operator]) \
-                         for operator in all_dicts}
+                           for operator in all_dicts}
         return mean_range_dict
 
 
@@ -196,7 +230,7 @@ class DataSet():
         prevprev = None
         with open(fname,'r') as f:
             for row in f:
-                if len(row) == 0:
+                if len(row) == 0 or 'SET' in row:
                     continue
                 newrow = row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
                 if 'CREATE' not in newrow and 'DROP' not in newrow and 'Tim' != newrow[:3]:
@@ -252,7 +286,7 @@ class DataSet():
         new_samp_dict = {}
         new_samp_dict["node_type"] = data[0]["Node Type"]
         new_samp_dict["subbatch_size"] = len(data)
-        feat_vec = [GET_INPUT[jss["Node Type"]](jss) for jss in data]
+        feat_vec = np.array([GET_INPUT[jss["Node Type"]](jss) for jss in data])
 
         # normalize feat_vec
         feat_vec = (feat_vec -

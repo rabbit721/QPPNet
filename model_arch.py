@@ -12,7 +12,11 @@ from train_utils import *
 
 basic = 3
 # this is from examining the tpch output
-dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 , 'Sort': 128 + 5 + 32,
+dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
+            'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
+            'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3,
+            'Bitmap Index Scan': num_index + 3,
+            'Sort': 128 + 5 + 32,
             'Hash': 4 + 32,
             'Hash Join': 11 + 32 * 2, 'Merge Join': 11 + 32 * 2,
             'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,

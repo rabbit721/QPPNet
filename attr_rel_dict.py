@@ -1,8 +1,9 @@
 
 # all operators used in tpc-h
-all_dicts = ['Aggregate', 'Gather Merge', 'Sort', 'Seq Scan', 'Limit',
-             'Hash Join', 'Hash', 'Nested Loop', 'Materialize', 'Merge Join',
-             'Subquery Scan', 'Gather']
+all_dicts = ['Aggregate', 'Gather Merge', 'Sort', 'Seq Scan', 'Index Scan',
+             'Bitmap Heap Scan', 'Bitmap Index Scan',
+             'Limit', 'Hash Join', 'Hash', 'Nested Loop', 'Materialize',
+             'Merge Join', 'Subquery Scan', 'Gather']
 
 join_types = ['semi', 'inner', 'anti', 'full', 'right']
 
@@ -15,6 +16,11 @@ aggreg_strats = ['plain', 'sorted', 'hashed']
 
 rel_names = ['customer', 'lineitem', 'nation', 'orders', 'part', 'partsupp',
              'region', 'supplier']
+
+index_names = ['c_ck', 'c_nk', 'p_pk', 's_sk', 's_nk', 'ps_pk', 'ps_sk',
+               'ps_pk_sk', 'ps_sk_pk', 'o_ok', 'o_ck', 'o_od', 'l_ok', 'l_pk',
+               'l_sk', 'l_sd', 'l_cd', 'l_rd', 'l_pk_sk', 'l_sk_pk', 'n_nk',
+               'n_rk', 'r_rk']
 
 rel_attr_list_dict = \
 {
