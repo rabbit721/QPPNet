@@ -14,7 +14,7 @@ basic = 3
 # this is from examining the tpch output
 dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
             'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
-            'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3,
+            'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3 + 32,
             'Bitmap Index Scan': num_index + 3,
             'Sort': 128 + 5 + 32,
             'Hash': 4 + 32,
@@ -31,6 +31,7 @@ dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
 # Hash Join: Join type [one-hot 5], parent relationship [one-hot 3];                 8 + 3 = 11
 # Scan: relation name [one-hot ?]; attr min, med, max; [use one-hot instead]         4 + 3 = 7
 # Index Scan: never seen one; (Skip)
+# Bitmap Heap Scan: 8 + 48 + 3 = 59
 # Aggregate: Strategy [one-hot 3], partial mode, operator (ignored)                  4 + 3 = 7
 
 def squared_diff(output, target):

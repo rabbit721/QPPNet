@@ -8,6 +8,7 @@ import pickle
 num_rel = 8
 max_num_attr = 16
 num_index = 23
+SCALE = 100
 
 with open('attr_val_dict.pickle', 'rb') as f:
     attr_val_dict = pickle.load(f)
@@ -48,8 +49,14 @@ def get_scan_input(plan_dict):
         rel_attr_vec = get_rel_attr_one_hot(plan_dict['Relation Name'],
                                             plan_dict['Filter'])
     except:
-        print('************************* default *************************')
-        rel_attr_vec = [0] * max_num_attr * 3
+        try:
+            rel_attr_vec = get_rel_attr_one_hot(plan_dict['Relation Name'],
+                                                plan_dict['Recheck Cond'])
+        except:
+            if 'Filter' in plan_dict:
+                print('************************* default *************************')
+                print(plan_dict)
+            rel_attr_vec = [0] * max_num_attr * 3
 
     return get_basics(plan_dict) + rel_vec + rel_attr_vec
 
@@ -64,11 +71,15 @@ def get_index_scan_input(plan_dict):
         rel_attr_vec = get_rel_attr_one_hot(plan_dict['Relation Name'],
                                             plan_dict['Index Cond'])
     except:
-        print('********************* default rel_attr_vec *********************')
+        if 'Index Cond' in plan_dict:
+            print('********************* default rel_attr_vec *********************')
+            print(plan_dict)
         rel_attr_vec = [0] * max_num_attr * 3
 
-    return get_basics(plan_dict) + rel_vec + rel_attr_vec + index_vec \
-           + [1 if plan_dict['Scan Direction'] == 'Forward' else 0]
+    res = get_basics(plan_dict) + rel_vec + rel_attr_vec + index_vec \
+          + [1 if plan_dict['Scan Direction'] == 'Forward' else 0]
+
+    return res
 
 def get_bitmap_index_scan_input(plan_dict):
     # plan_dict: dict where the plan_dict['node_type'] = 'Bitmap Index Scan'
@@ -304,7 +315,7 @@ class DataSet():
         #print(i, [d["Node Type"] for d in data], feat_vec)
         new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
         new_samp_dict["children_plan"] = child_plan_lst
-        new_samp_dict["total_time"] = np.array(total_time).astype(np.float32)
+        new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / SCALE
 
         if 'Subplan Name' in data[0]:
             new_samp_dict['is_subplan'] = True
