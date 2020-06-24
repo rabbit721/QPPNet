@@ -132,6 +132,7 @@ GET_INPUT = \
     "Merge Join": get_join_input,
     "Seq Scan": get_scan_input,
     "Index Scan": get_index_scan_input,
+    "Index Only Scan": get_index_scan_input,
     "Bitmap Heap Scan": get_scan_input,
     "Bitmap Index Scan": get_bitmap_index_scan_input,
     "Sort": get_sort_input,
@@ -241,7 +242,8 @@ class DataSet():
         prevprev = None
         with open(fname,'r') as f:
             for row in f:
-                if len(row) == 0 or 'SET' in row:
+                if not ('[' in row or '{' in row or ']' in row or '}' in row \
+                        or ':' in row):
                     continue
                 newrow = row.replace('+', "").replace("(1 row)\n", "").strip('\n').strip(' ')
                 if 'CREATE' not in newrow and 'DROP' not in newrow and 'Tim' != newrow[:3]:

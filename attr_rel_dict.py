@@ -1,6 +1,7 @@
 
 # all operators used in tpc-h
 all_dicts = ['Aggregate', 'Gather Merge', 'Sort', 'Seq Scan', 'Index Scan',
+             'Index Only Scan',
              'Bitmap Heap Scan', 'Bitmap Index Scan',
              'Limit', 'Hash Join', 'Hash', 'Nested Loop', 'Materialize',
              'Merge Join', 'Subquery Scan', 'Gather']

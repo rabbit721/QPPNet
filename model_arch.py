@@ -14,6 +14,7 @@ basic = 3
 # this is from examining the tpch output
 dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
             'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
+            'Index Only Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
             'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3 + 32,
             'Bitmap Index Scan': num_index + 3,
             'Sort': 128 + 5 + 32,
