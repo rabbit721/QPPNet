@@ -7,22 +7,26 @@ from torch.optim import lr_scheduler
 
 import functools, os
 import numpy as np
+import json
 
 from train_utils import *
 
 basic = 3
 # this is from examining the tpch output
-dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
-            'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
-            'Index Only Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
-            'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3 + 32,
-            'Bitmap Index Scan': num_index + 3,
-            'Sort': 128 + 5 + 32,
-            'Hash': 4 + 32,
-            'Hash Join': 11 + 32 * 2, 'Merge Join': 11 + 32 * 2,
-            'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
-            'Subquery Scan': 32 + 3,
-            'Materialize': 32 + 3, 'Gather Merge': 32 + 3, 'Gather': 32 + 3}
+tpch_dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
+                 'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
+                 'Index Only Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
+                 'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3 + 32,
+                 'Bitmap Index Scan': num_index + 3,
+                 'Sort': 128 + 5 + 32,
+                 'Hash': 4 + 32,
+                 'Hash Join': 11 + 32 * 2, 'Merge Join': 11 + 32 * 2,
+                 'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
+                 'Subquery Scan': 32 + 3,
+                 'Materialize': 32 + 3, 'Gather Merge': 32 + 3, 'Gather': 32 + 3}
+
+with open('dataset/terrier_dataset/input_dim_dict.json', 'r') as f:
+    terrier_dim_dict = json.load(f)
 
 # basic input:
 # plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
@@ -45,7 +49,7 @@ def squared_diff(output, target):
 class NeuralUnit(nn.Module):
     """Define a Resnet block"""
 
-    def __init__(self, node_type, num_layers=5, hidden_size=128, output_size=32,
+    def __init__(self, node_type, dim_dict, num_layers=5, hidden_size=128, output_size=32,
                  norm_enabled=False):
         """
         Initialize the InternalUnit
@@ -96,6 +100,11 @@ class QPPNet():
         self.test_time = opt.test_time
         self.batch_size = opt.batch_size
 
+        if opt.dataset == "TPCH":
+            self.dim_dict = tpch_dim_dict
+        else:
+            self.dim_dict = terrier_dim_dict
+
         self.last_total_loss = None
         self.last_pred_err = None
         self.pred_err = None
@@ -109,8 +118,8 @@ class QPPNet():
         self.units = {}
         self.optimizers, self.schedulers = {}, {}
         self.best = 100000
-        for operator in dim_dict:
-            self.units[operator] = NeuralUnit(operator).to(self.device)
+        for operator in self.dim_dict:
+            self.units[operator] = NeuralUnit(operator, self.dim_dict).to(self.device)
             if opt.SGD:
                 optimizer = torch.optim.SGD(self.units[operator].parameters(),
                                             lr=opt.lr, momentum=0.9)
@@ -129,8 +138,8 @@ class QPPNet():
         self.loss_fn = squared_diff
         # Initialize the global loss accumulator dict
         self.dummy = torch.zeros(1).to(self.device)
-        self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
-        self.curr_losses = {operator: 0 for operator in dim_dict}
+        self.acc_loss = {operator: [self.dummy] for operator in self.dim_dict}
+        self.curr_losses = {operator: 0 for operator in self.dim_dict}
         self.total_loss = None
 
     def set_input(self, samp_dicts):
@@ -191,10 +200,10 @@ class QPPNet():
         return output_vec, pred_time
 
     def forward(self, epoch):
-        # # self.input is a list of preprocessed plan_vec_dict
+        # self.input is a list of preprocessed plan_vec_dict
         total_loss = torch.zeros(1).to(self.device)
         total_losses = {operator: [torch.zeros(1).to(self.device)] \
-                                            for operator in dim_dict}
+                                            for operator in self.dim_dict}
         if self.test:
             test_loss = []
             pred_err = []
@@ -202,7 +211,7 @@ class QPPNet():
         for idx, samp_dict in enumerate(self.input):
             # first clear prev computed losses
             del self.acc_loss
-            self.acc_loss = {operator: [self.dummy] for operator in dim_dict}
+            self.acc_loss = {operator: [self.dummy] for operator in self.dim_dict}
 
             _, pred_time = self.forward_oneQ_batch(samp_dict)
             if self.test:
@@ -230,7 +239,7 @@ class QPPNet():
 
                 total_losses[operator].append(all_loss)
 
-            subbatch_loss = torch.mean(torch.sqrt(subbatch_loss/D_size))
+            subbatch_loss = torch.mean(torch.sqrt(subbatch_loss / D_size))
             #print("subbatch_loss.shape",subbatch_loss.shape)
             total_loss += subbatch_loss * samp_dict['subbatch_size']
 
@@ -243,7 +252,7 @@ class QPPNet():
             all_pred_err = torch.cat(pred_err)
             self.pred_err = torch.mean(all_pred_err)
         else:
-            self.curr_losses = {operator: torch.mean(torch.cat(total_losses[operator])).item() for operator in dim_dict}
+            self.curr_losses = {operator: torch.mean(torch.cat(total_losses[operator])).item() for operator in self.dim_dict}
             self.total_loss = torch.mean(total_loss / self.batch_size)
         #print("self.total_loss.shape", self.total_loss.shape)
 

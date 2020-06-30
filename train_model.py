@@ -1,6 +1,7 @@
 import time, torch
 from model_arch import QPPNet
-from train_utils import DataSet
+from dataset.terrier_dataset.terrier_utils import TerrierDataSet
+from dataset.tpch_dataset.tpch_utils import TPCHDataSet
 import argparse
 
 
@@ -11,10 +12,9 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 
 parser.add_argument('--data_dir', type=str, default='./res_by_temp/',
                     help='Dir containing train data')
-'''
-parser.add_argument('--test_data_dir', type=str, default='./test/',
-                    help='Dir containing test data')
-'''
+
+parser.add_argument('--dataset', type=str, default='TPCH',
+                    help='Select dataset [TPCH | Terrier]')
 
 parser.add_argument('--test_time', action='store_true',
                     help='if in testing mode')
@@ -78,7 +78,10 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     data_dir = 'res_by_temp/'
-    dataset = DataSet(opt)
+    if opt.dataset == "TPCH":
+        dataset = TPCHDataSet(opt)
+    else:
+        dataset = TerrierDataSet(opt)
 
     print("dataset_size", dataset.datasize)
     torch.set_default_tensor_type(torch.FloatTensor)
