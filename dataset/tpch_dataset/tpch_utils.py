@@ -13,7 +13,6 @@ SCALE = 100
 with open('attr_val_dict.pickle', 'rb') as f:
     attr_val_dict = pickle.load(f)
 
-
 # need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
 def get_basics(plan_dict):
     return [plan_dict['Plan Width'], plan_dict['Plan Rows'],
@@ -151,11 +150,9 @@ class TPCHDataSet():
         self.num_sample_per_q = int(opt.num_sample_per_q * 0.9)
         self.batch_size = opt.batch_size
         self.num_q = opt.num_q
+        self.SCALE = SCALE
 
-        if opt.data == "tpch":
-            self.input_func = TPCH_GET_INPUT
-
-
+        self.input_func = TPCH_GET_INPUT
         fnames = [fname for fname in os.listdir(opt.data_dir) if 'csv' in fname]
         fnames = sorted(fnames,
                         key=lambda fname: int(fname.split('temp')[1][:-4]))
@@ -321,7 +318,7 @@ class TPCHDataSet():
         #print(i, [d["Node Type"] for d in data], feat_vec)
         new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
         new_samp_dict["children_plan"] = child_plan_lst
-        new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / SCALE
+        new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / self.SCALE
 
         if 'Subplan Name' in data[0]:
             new_samp_dict['is_subplan'] = True

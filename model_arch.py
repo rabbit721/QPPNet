@@ -28,6 +28,9 @@ tpch_dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
 with open('dataset/terrier_dataset/input_dim_dict.json', 'r') as f:
     terrier_dim_dict = json.load(f)
 
+with open('./dataset/terrier_dataset/terrier_group_dict.json', 'r') as f:
+    pname_group_dict = json.load(f)
+
 # basic input:
 # plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
 
@@ -118,6 +121,7 @@ class QPPNet():
         self.units = {}
         self.optimizers, self.schedulers = {}, {}
         self.best = 100000
+
         for operator in self.dim_dict:
             self.units[operator] = NeuralUnit(operator, self.dim_dict).to(self.device)
             if opt.SGD:
@@ -155,6 +159,9 @@ class QPPNet():
         '''
         #print(samp_batch)
         feat_vec = samp_batch['feat_vec']
+        # print(samp_batch['real_node_type'])
+        # print(samp_batch['node_type'])
+        # print(feat_vec.shape, print(samp_batch['children_plan']))
         input_vec = torch.from_numpy(feat_vec).to(self.device)
         #print(samp_batch['node_type'], input_vec)
         subplans_time = []
@@ -166,11 +173,16 @@ class QPPNet():
             else:
                 subplans_time.append(torch.index_select(child_output_vec, 1, torch.zeros(1, dtype=torch.long)))
 
-        #print(samp_batch['node_type'], input_vec.size())
+        expected_len = self.dim_dict[samp_batch['node_type']]
+        if expected_len > input_vec.size()[1]:
+            add_on = torch.zeros(input_vec.size()[0], expected_len - input_vec.size()[1])
+            print(samp_batch['real_node_type'], input_vec.shape, expected_len)
+            input_vec = torch.cat((input_vec, add_on), axis=1)
+        # print(samp_batch['node_type'], input_vec.size())
         output_vec = self.units[samp_batch['node_type']](input_vec)
-        #print(output_vec.shape)
+        # print(output_vec.shape)
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
-        ## just to get a 1-dim vec of size batch_size out of a batch_sizex1 matrix
+        # just to get a 1-dim vec of size batch_size out of a batch_sizex1 matrix
         # pred_time = torch.mean(pred_time, 1)
 
         cat_res = torch.cat([pred_time] + subplans_time, axis=1)
