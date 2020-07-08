@@ -102,6 +102,7 @@ class QPPNet():
         self.test = False
         self.test_time = opt.test_time
         self.batch_size = opt.batch_size
+        self.dataset = opt.dataset
 
         if opt.dataset == "TPCH":
             self.dim_dict = tpch_dim_dict
@@ -224,21 +225,34 @@ class QPPNet():
             # first clear prev computed losses
             del self.acc_loss
             self.acc_loss = {operator: [self.dummy] for operator in self.dim_dict}
-
+            if self.dataset == "TPCH":
+                epsilon = torch.finfo(tt.dtype).eps
+            else:
+                epsilon = 0.01
             _, pred_time = self.forward_oneQ_batch(samp_dict)
             if self.test:
                 tt = torch.from_numpy(samp_dict['total_time']).to(self.device)
+
                 test_loss.append(torch.abs(tt - pred_time))
-                pred_err.append(torch.abs(tt - pred_time)/tt)
+                curr_pred_err = torch.abs(tt - pred_time)/(tt+epsilon)
+                pred_err.append(curr_pred_err)
+                # if idx == 6 or \
+
+                # print(samp_dict['feat_vec'])
+                if np.isnan(curr_pred_err.detach()).any() or \
+                   np.isinf(curr_pred_err.detach()).any():
+                    print("feat_vec", samp_dict['feat_vec'])
+                    print("pred_time", pred_time)
+                    print("total_time", tt)
                 if epoch % 50 == 0:
                     print("####### eval by temp: idx {}, test_loss {}, pred_err {}, "\
                       "rq {} ".format(idx, torch.mean(torch.abs(tt - pred_time)).item(),
-                              torch.mean(torch.abs(tt - pred_time)/tt).item(),
-                              torch.max(torch.cat([tt/(pred_time+torch.finfo(tt.dtype).eps),
-                                                   pred_time/(tt+torch.finfo(tt.dtype).eps)])).item()))
+                              torch.mean(curr_pred_err).item(),
+                              torch.max(torch.cat([tt/(pred_time+epsilon),
+                                                   pred_time/(tt+epsilon)])).item()))
 
-                self.rq = max(torch.max(torch.cat([tt/(pred_time+torch.finfo(tt.dtype).eps),
-                                                   pred_time/(tt+torch.finfo(tt.dtype).eps)])).item(), self.rq)
+                self.rq = max(torch.max(torch.cat([tt/(pred_time+epsilon),
+                                                   pred_time/(tt+epsilon)])).item(), self.rq)
 
             D_size = 0
             subbatch_loss = torch.zeros(1).to(self.device)
