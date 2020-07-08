@@ -161,6 +161,7 @@ class QPPNet():
         #print(samp_batch)
         feat_vec = samp_batch['feat_vec']
         # print(samp_batch['real_node_type'])
+
         # print(samp_batch['node_type'])
         # print(feat_vec.shape, print(samp_batch['children_plan']))
         input_vec = torch.from_numpy(feat_vec).to(self.device)
@@ -185,6 +186,9 @@ class QPPNet():
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
         # just to get a 1-dim vec of size batch_size out of a batch_sizex1 matrix
         # pred_time = torch.mean(pred_time, 1)
+
+        # if 'lineitem' in samp_batch['real_node_type']:
+        #     print(feat_vec, samp_batch['total_time'], pred_time)
 
         cat_res = torch.cat([pred_time] + subplans_time, axis=1)
         #print("cat_res.shape", cat_res.shape)
@@ -230,6 +234,8 @@ class QPPNet():
             else:
                 epsilon = 0.01
             _, pred_time = self.forward_oneQ_batch(samp_dict)
+            # if idx == 6:
+            #     print("feat_vec", samp_dict["feat_vec"])
             if self.test:
                 tt = torch.from_numpy(samp_dict['total_time']).to(self.device)
 
@@ -253,6 +259,8 @@ class QPPNet():
 
                 self.rq = max(torch.max(torch.cat([tt/(pred_time+epsilon),
                                                    pred_time/(tt+epsilon)])).item(), self.rq)
+                # if self.rq == 5300.5:
+                #     print("feat_vec", samp_dict['feat_vec'])
 
             D_size = 0
             subbatch_loss = torch.zeros(1).to(self.device)

@@ -2,10 +2,11 @@ import collections, pickle
 import pickle
 import json
 import numpy as np
+import torch
 from collections import Counter
 from dataset.tpch_dataset.tpch_utils import TPCHDataSet
 import dataset.terrier_dataset.terrier_query_info as tqi
-SCALE = 100
+SCALE = 1000
 
 MEM_ADJUST_MAP = getattr(tqi, "MEM_ADJUST_MAP")
 
@@ -105,11 +106,13 @@ class TerrierDataSet(TPCHDataSet):
         # print(new_samp_dict['node_type'])
 
 
-        feat_vec = (feat_vec -
-                    self.mean_range_dict[data[0]["Node Type"]][0]) \
-                    / self.mean_range_dict[data[0]["Node Type"]][1]
-
-        feat_vec += np.random.normal(0, 0.5, feat_vec.shape)
+        feat_vec = 10 * feat_vec / (self.mean_range_dict[data[0]["Node Type"]][0] + 0.01)
+        feat_vec = feat_vec + np.random.default_rng().normal(loc=0, scale=1, size=feat_vec.shape)
+        # if i == 6:
+        #     # print(torch.normal(mean=torch.zeros(feat_vec.shape),
+        #     #                    std=torch.ones(feat_vec.shape)))
+        #     # print(np.random.default_rng().normal(loc=0, scale=0.05, size=feat_vec.shape))
+        #     print(feat_vec)
 
         total_time = [jss['Actual Total Time'] for jss in data]
         child_plan_lst = []
@@ -146,7 +149,7 @@ class TerrierDataSet(TPCHDataSet):
           else:
             total_vec = np.concatenate(feat_vec_lst)
             return (np.mean(total_vec, axis=0),
-                    np.max(total_vec, axis=0)+np.finfo(np.float32).eps)
+                    np.max(total_vec, axis=0)+0.01)
 
         mean_range_dict = {operator : cmp_mean_range(feat_vec_col[operator]) \
                            for operator in pname_group_dict}
@@ -204,9 +207,9 @@ class TerrierDataSet(TPCHDataSet):
             samp_group[grp_idx].append(self.dataset[idx])
 
         parsed_input = []
-        for grp in samp_group:
+        for i, grp in enumerate(samp_group):
             # print(grp)
             if len(grp) != 0:
-                parsed_input.append(self.get_input(grp, 'dum'))
+                parsed_input.append(self.get_input(grp, i))
         #print(parsed_input)
         return parsed_input
