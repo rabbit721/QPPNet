@@ -103,10 +103,13 @@ class TerrierDataSet(TPCHDataSet):
         # print(feat_vec)
         # normalize feat_vec
         # print(new_samp_dict['node_type'])
+
+
         feat_vec = (feat_vec -
                     self.mean_range_dict[data[0]["Node Type"]][0]) \
                     / self.mean_range_dict[data[0]["Node Type"]][1]
 
+        feat_vec += np.random.normal(0, 0.5, feat_vec.shape)
 
         total_time = [jss['Actual Total Time'] for jss in data]
         child_plan_lst = []
@@ -177,7 +180,7 @@ class TerrierDataSet(TPCHDataSet):
         enum = []
         unique = []
         for plan_dict in data:
-            grp_num = plan_dict['Node Type'].split("_")[1]
+            grp_num = "_".join(plan_dict['Node Type'].split("_")[1:-1])
             if grp_num in unique:
                 enum.append(unique.index(grp_num))
             else:
