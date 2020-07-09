@@ -6,7 +6,7 @@ import torch
 from collections import Counter
 from dataset.tpch_dataset.tpch_utils import TPCHDataSet
 import dataset.terrier_dataset.terrier_query_info as tqi
-SCALE = 1000
+SCALE = 10000
 
 MEM_ADJUST_MAP = getattr(tqi, "MEM_ADJUST_MAP")
 
@@ -80,10 +80,10 @@ class TerrierDataSet(TPCHDataSet):
 
         print(self.mean_range_dict)
 
-        test_dataset = [self.get_input(grp, 'dum') for grp in test_groups]
+        test_dataset = [self.get_input(grp) for grp in test_groups]
         self.test_dataset = test_dataset
 
-    def get_input(self, data, i): # Helper for sample_data
+    def get_input(self, data): # Helper for sample_data
         """
         Parameter: data is a list of plan_dict; all entry is from the same
         query template and thus have the same query plan;
@@ -106,8 +106,11 @@ class TerrierDataSet(TPCHDataSet):
         # print(new_samp_dict['node_type'])
 
 
-        feat_vec = 10 * feat_vec / (self.mean_range_dict[data[0]["Node Type"]][0] + 0.01)
-        feat_vec = feat_vec + np.random.default_rng().normal(loc=0, scale=1, size=feat_vec.shape)
+        feat_vec = feat_vec / (self.mean_range_dict[data[0]["Node Type"]][0] + 0.01)
+        if 'lineitem' in new_samp_dict["real_node_type"]:
+            feat_vec += np.random.default_rng().normal(loc=0, scale=1, size=feat_vec.shape)
+        else:
+            feat_vec += np.random.default_rng().normal(loc=0, scale=0.1, size=feat_vec.shape)
         # if i == 6:
         #     # print(torch.normal(mean=torch.zeros(feat_vec.shape),
         #     #                    std=torch.ones(feat_vec.shape)))
@@ -118,7 +121,7 @@ class TerrierDataSet(TPCHDataSet):
         child_plan_lst = []
         if 'Plans' in data[0]:
             for i in range(len(data[0]['Plans'])):
-                child_plan_dict = self.get_input([jss['Plans'][i] for jss in data], 'dum')
+                child_plan_dict = self.get_input([jss['Plans'][i] for jss in data])
                 child_plan_dict['is_subplan'] = False
                 child_plan_lst.append(child_plan_dict)
 
@@ -210,6 +213,6 @@ class TerrierDataSet(TPCHDataSet):
         for i, grp in enumerate(samp_group):
             # print(grp)
             if len(grp) != 0:
-                parsed_input.append(self.get_input(grp, i))
+                parsed_input.append(self.get_input(grp))
         #print(parsed_input)
         return parsed_input

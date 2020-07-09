@@ -52,7 +52,7 @@ def squared_diff(output, target):
 class NeuralUnit(nn.Module):
     """Define a Resnet block"""
 
-    def __init__(self, node_type, dim_dict, num_layers=5, hidden_size=128, output_size=32,
+    def __init__(self, node_type, dim_dict, num_layers=3, hidden_size=128, output_size=32,
                  norm_enabled=False):
         """
         Initialize the InternalUnit
@@ -139,13 +139,15 @@ class QPPNet():
 
             self.optimizers[operator] = optimizer
 
-
         self.loss_fn = squared_diff
         # Initialize the global loss accumulator dict
         self.dummy = torch.zeros(1).to(self.device)
         self.acc_loss = {operator: [self.dummy] for operator in self.dim_dict}
         self.curr_losses = {operator: 0 for operator in self.dim_dict}
         self.total_loss = None
+
+        if opt.start_epoch > 0:
+            self.load(opt.start_epoch)
 
     def set_input(self, samp_dicts):
         self.input = samp_dicts
@@ -187,7 +189,7 @@ class QPPNet():
         # just to get a 1-dim vec of size batch_size out of a batch_sizex1 matrix
         # pred_time = torch.mean(pred_time, 1)
 
-        # if 'lineitem' in samp_batch['real_node_type']:
+        # if 'scan_lineitem' in samp_batch['real_node_type']:
         #     print(feat_vec, samp_batch['total_time'], pred_time)
 
         cat_res = torch.cat([pred_time] + subplans_time, axis=1)
@@ -339,3 +341,12 @@ class QPPNet():
                 unit.to(self.device)
             else:
                 torch.save(unit.cpu().state_dict(), save_path)
+
+    def load(self, epoch):
+        for name in self.units:
+            save_filename = '%s_net_%s.pth' % (epoch, name)
+            save_path = os.path.join(self.save_dir, save_filename)
+            if not os.path.exists(save_path):
+                raise ValueError("model {} doesn't exist".format(save_path))
+
+            self.units[name].load_state_dict(torch.load(save_path))
