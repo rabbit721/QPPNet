@@ -8,6 +8,7 @@ from dataset.tpch_dataset.tpch_utils import TPCHDataSet
 import dataset.terrier_dataset.terrier_query_info as tqi
 SCALE = 10000
 
+TRAIN_TEST_SPLIT = 0.8s
 MEM_ADJUST_MAP = getattr(tqi, "MEM_ADJUST_MAP")
 
 def get_input_for_all(plan_dict):
@@ -48,7 +49,7 @@ class TerrierDataSet(TPCHDataSet):
         for j, grp_idx in enumerate(enum):
             all_groups[grp_idx].append(all_data[j])
 
-        self.num_sample_per_q = int(all_samp_num * 0.9)
+        self.num_sample_per_q = int(all_samp_num * TRAIN_TEST_SPLIT)
 
         self.grp_idxes = []
         train_data = []
