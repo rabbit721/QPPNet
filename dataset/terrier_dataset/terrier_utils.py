@@ -8,7 +8,7 @@ from dataset.tpch_dataset.tpch_utils import TPCHDataSet
 import dataset.terrier_dataset.terrier_query_info as tqi
 SCALE = 10000
 
-TRAIN_TEST_SPLIT = 0.8s
+TRAIN_TEST_SPLIT = 0.8
 MEM_ADJUST_MAP = getattr(tqi, "MEM_ADJUST_MAP")
 
 def get_input_for_all(plan_dict):
@@ -38,8 +38,7 @@ class TerrierDataSet(TPCHDataSet):
         self.SCALE = SCALE
         self.input_func = TR_GET_INPUT
 
-        fname = "execution.csv"
-        all_data = self.get_all_plans(opt.data_dir + fname)
+        all_data = self.get_all_plans(opt.data_dir)
         enum, num_grp = self.grouping(all_data)
 
         count = Counter(enum)
