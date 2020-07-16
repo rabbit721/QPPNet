@@ -6,7 +6,8 @@ import torch
 from collections import Counter
 from dataset.tpch_dataset.tpch_utils import TPCHDataSet
 import dataset.terrier_dataset.terrier_query_info_1G as tqi_1
-import dataset.terrier_dataset.terrier_query_info_0d1G as tqi_0d1
+import dataset.terrier_dataset.terrier_query_info_0p1G as tqi_0p1
+import dataset.terrier_dataset.terrier_query_info_10G as tqi_10
 
 SCALE = 10000
 
@@ -16,8 +17,11 @@ TRAIN_TEST_SPLIT = 0.8
 def get_input_for_all(SF):
     if SF == 1:
         tqi = tqi_1
+    elif SF == 0.1:
+        tqi = tqi_0p1
     else:
-        tqi = tqi_0d1
+        tqi = tqi_10
+
     MEM_ADJUST_MAP = getattr(tqi, "MEM_ADJUST_MAP")
     def get_input(plan_dict):
         id_name = plan_dict["Node Type"].strip("tpch").upper()
@@ -38,7 +42,7 @@ with open('dataset/terrier_dataset/input_dim_dict.json', 'r') as f:
 
 def get_input_func(data_dir):
     SF = data_dir.strip('.csv').split('execution_')[1]
-    if '0-1' in SF:
+    if '0p1' in SF:
         num = 0.1
     elif '10' in SF:
         num = 10
