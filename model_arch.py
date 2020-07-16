@@ -146,13 +146,13 @@ class QPPNet():
         self.curr_losses = {operator: 0 for operator in self.dim_dict}
         self.total_loss = None
 
-        if opt.start_epoch > 0:
+        if opt.start_epoch > 0 or opt.test_time:
             self.load(opt.start_epoch)
 
     def set_input(self, samp_dicts):
         self.input = samp_dicts
 
-    def forward_oneQ_batch(self, samp_batch):
+    def _forward_oneQ_batch(self, samp_batch):
         '''
         Calcuates the loss for a batch of queries from one query template
 
@@ -170,7 +170,7 @@ class QPPNet():
         #print(samp_batch['node_type'], input_vec)
         subplans_time = []
         for child_plan_dict in samp_batch['children_plan']:
-            child_output_vec, _ = self.forward_oneQ_batch(child_plan_dict)
+            child_output_vec, _ = self._forward_oneQ_batch(child_plan_dict)
             if not child_plan_dict['is_subplan']:
                 input_vec = torch.cat((input_vec, child_output_vec),axis=1)
                 # first dim is subbatch_size
@@ -182,7 +182,8 @@ class QPPNet():
             add_on = torch.zeros(input_vec.size()[0], expected_len - input_vec.size()[1])
             print(samp_batch['real_node_type'], input_vec.shape, expected_len)
             input_vec = torch.cat((input_vec, add_on), axis=1)
-        # print(samp_batch['node_type'], input_vec.size())
+
+        # print(samp_batch['node_type'], input_vec)
         output_vec = self.units[samp_batch['node_type']](input_vec)
         # print(output_vec.shape)
         pred_time = torch.index_select(output_vec, 1, torch.zeros(1, dtype=torch.long)) # pred_time assumed to be the first col
@@ -218,7 +219,7 @@ class QPPNet():
             exit(-1)
         return output_vec, pred_time
 
-    def forward(self, epoch):
+    def _forward(self, epoch):
         # self.input is a list of preprocessed plan_vec_dict
         total_loss = torch.zeros(1).to(self.device)
         total_losses = {operator: [torch.zeros(1).to(self.device)] \
@@ -231,11 +232,14 @@ class QPPNet():
             # first clear prev computed losses
             del self.acc_loss
             self.acc_loss = {operator: [self.dummy] for operator in self.dim_dict}
+
+            _, pred_time = self._forward_oneQ_batch(samp_dict)
+
             if self.dataset == "TPCH":
-                epsilon = torch.finfo(tt.dtype).eps
+                epsilon = torch.finfo(pred_time.dtype).eps
             else:
                 epsilon = 0.01
-            _, pred_time = self.forward_oneQ_batch(samp_dict)
+
             # if idx == 6:
             #     print("feat_vec", samp_dict["feat_vec"])
             if self.test:
@@ -256,11 +260,11 @@ class QPPNet():
                     print("####### eval by temp: idx {}, test_loss {}, pred_err {}, "\
                       "rq {} ".format(idx, torch.mean(torch.abs(tt - pred_time)).item(),
                               torch.mean(curr_pred_err).item(),
-                              torch.max(torch.cat([tt/(pred_time+epsilon),
-                                                   pred_time/(tt+epsilon)])).item()))
+                              torch.max(torch.cat([(tt+epsilon)/(pred_time+epsilon),
+                                                   (pred_time+epsilon)/(tt+epsilon)])).item()))
 
-                self.rq = max(torch.max(torch.cat([tt/(pred_time+epsilon),
-                                                   pred_time/(tt+epsilon)])).item(), self.rq)
+                self.rq = max(torch.max(torch.cat([(tt+epsilon)/(pred_time+epsilon),
+                                                   (pred_time+epsilon)/(tt+epsilon)])).item(), self.rq)
                 # if self.rq == 5300.5:
                 #     print("feat_vec", samp_dict['feat_vec'])
 
@@ -303,7 +307,7 @@ class QPPNet():
     def optimize_parameters(self, epoch):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         self.test = False
-        self.forward(epoch)
+        self._forward(epoch)
         # clear prev grad first
         for operator in self.optimizers:
             self.optimizers[operator].zero_grad()
@@ -317,16 +321,22 @@ class QPPNet():
 
         self.input = self.test_dataset
         self.test = True
-        self.forward(epoch)
+        self._forward(epoch)
         self.last_test_loss = self.test_loss.item()
         self.last_pred_err = self.pred_err.item()
         self.last_rq = self.rq
         self.test_loss, self.pred_err = None, None
         self.rq = 0
 
-    def evaluate(self):
+    def evaluate(self, eval_dataset):
         self.test = True
-        self.forward()
+        self.set_input(eval_dataset)
+        self._forward(0)
+        self.last_test_loss = self.test_loss.item()
+        self.last_pred_err = self.pred_err.item()
+        self.last_rq = self.rq
+        self.test_loss, self.pred_err = None, None
+        self.rq = 0
 
     def get_current_losses(self):
         return self.curr_losses

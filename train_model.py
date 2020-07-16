@@ -89,45 +89,50 @@ if __name__ == '__main__':
 
     total_iter = 0
 
-    logf = open(opt.logfile, 'w+')
-    save_opt(opt, logf)
+    if opt.test_time:
+        qpp.evaluate(dataset.all_dataset)
+        print('total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
+              .format(qpp.last_total_loss, qpp.last_test_loss,
+                      qpp.last_pred_err, qpp.last_rq))
+    else:
+        logf = open(opt.logfile, 'w+')
+        save_opt(opt, logf)
+        #qpp.test_dataset = dataset.create_test_data(opt)
+        qpp.test_dataset = dataset.test_dataset
 
-    #qpp.test_dataset = dataset.create_test_data(opt)
-    qpp.test_dataset = dataset.test_dataset
+        for epoch in range(opt.start_epoch, opt.end_epoch):
+            epoch_start_time = time.time()  # timer for entire epoch
+            iter_data_time = time.time()    # timer for data loading per iteration
+            epoch_iter = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
 
-    for epoch in range(opt.start_epoch, opt.end_epoch):
-        epoch_start_time = time.time()  # timer for entire epoch
-        iter_data_time = time.time()    # timer for data loading per iteration
-        epoch_iter = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
+            samp_dicts = dataset.sample_data()
+            total_iter += opt.batch_size
 
-        samp_dicts = dataset.sample_data()
-        total_iter += opt.batch_size
+            qpp.set_input(samp_dicts)
+            qpp.optimize_parameters(epoch)
+            logf.write("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
+                      + '; total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
+                      .format(qpp.last_total_loss, qpp.last_test_loss,
+                              qpp.last_pred_err, qpp.last_rq))
 
-        qpp.set_input(samp_dicts)
-        qpp.optimize_parameters(epoch)
-        logf.write("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
-                   + '; total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
-                   .format(qpp.last_total_loss, qpp.last_test_loss,
-                           qpp.last_pred_err, qpp.last_rq))
+            #if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
+            losses = qpp.get_current_losses()
+            loss_str = "losses: "
+            for op in losses:
+              loss_str += str(op) + " [" + str(losses[op]) + "]; "
 
-        #if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
-        losses = qpp.get_current_losses()
-        loss_str = "losses: "
-        for op in losses:
-          loss_str += str(op) + " [" + str(losses[op]) + "]; "
-
-        if epoch % 50 == 0:
-            print("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
-                  + '; total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
-                  .format(qpp.last_total_loss, qpp.last_test_loss,
-                          qpp.last_pred_err, qpp.last_rq))
-            print(loss_str)
+            if epoch % 50 == 0:
+                print("epoch: " + str(epoch) + "; iter_num: " + str(total_iter) \
+                      + '; total_loss: {}; test_loss: {}; pred_err: {}; R(q): {}' \
+                      .format(qpp.last_total_loss, qpp.last_test_loss,
+                              qpp.last_pred_err, qpp.last_rq))
+                print(loss_str)
 
 
-        logf.write(loss_str + '\n')
+            logf.write(loss_str + '\n')
 
-        if (epoch + 1) % opt.save_latest_epoch_freq == 0:   # cache our latest model every <save_latest_freq> iterations
-            print('saving the latest model (epoch %d, total_iters %d)' % (epoch + 1, total_iter))
-            qpp.save_units(epoch + 1)
+            if (epoch + 1) % opt.save_latest_epoch_freq == 0:   # cache our latest model every <save_latest_freq> iterations
+                print('saving the latest model (epoch %d, total_iters %d)' % (epoch + 1, total_iter))
+                qpp.save_units(epoch + 1)
 
-    logf.close()
+        logf.close()

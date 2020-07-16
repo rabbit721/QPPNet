@@ -12,7 +12,7 @@ _Q1_P2 = [(OpUnit.AGG_ITERATE, [4, 92, 10, 4]),
           (OpUnit.SORT_BUILD, [4, 32, 2, 4])
           ]
 
-_Q1_Q3 = [(OpUnit.SORT_ITERATE, [4, 92, 10, 4]),
+_Q1_P3 = [(OpUnit.SORT_ITERATE, [4, 92, 10, 4]),
           (OpUnit.OUTPUT, [4, 92, 10, 4]),
           ]
 
@@ -169,7 +169,7 @@ _SCAN_ORDERS_P1 = [(OpUnit.SEQ_SCAN, [1500000, 4, 1, 1500000]),
 # Map from the query pipeline identifier to the their opunit features
 FEATURE_MAP = {"tpch_q1_p1": _Q1_P1,
                "tpch_q1_p2": _Q1_P2,
-               "tpch_q1_p3": _Q1_Q3,
+               "tpch_q1_p3": _Q1_P3,
                "tpch_q4_p1": _Q4_P1,
                "tpch_q4_p2": _Q4_P2,
                "tpch_q4_p3": _Q4_P3,
@@ -198,4 +198,31 @@ FEATURE_MAP = {"tpch_q1_p1": _Q1_P1,
                "tpch_q11_p6": _Q11_P6,
                "tpch_scan_lineitem_p1": _SCAN_LINEITEM_P1,
                "tpch_scan_orders_p1": _SCAN_ORDERS_P1,
+               }
+
+
+# Map from query pipeline identifier to the memory adjustment factor
+MEM_ADJUST_MAP = {
+               "tpch_q1_p1": 1.2105,
+               "tpch_q1_p2": 1.375,
+               "tpch_q4_p1": 1.75,
+               "tpch_q4_p2": 0.5455,
+               "tpch_q4_p3": 0.625,
+               "tpch_q5_p1": 1.0,
+               "tpch_q5_p2": 1.75,
+               "tpch_q5_p3": 2.25,
+               "tpch_q5_p4": 2.25,
+               "tpch_q5_p5": 1.0,
+               "tpch_q5_p6": 0.6364,
+               "tpch_q5_p7": 1.25,
+               "tpch_q7_p1": 3.0,
+               "tpch_q7_p2": 3.0,
+               "tpch_q7_p3": 3.0,
+               "tpch_q7_p4": 1.0,
+               "tpch_q7_p5": 0.5714,
+               "tpch_q7_p6": 0.5556,
+               "tpch_q11_p1": 1.0,
+               "tpch_q11_p2": 1.0,
+               "tpch_q11_p4": 1.2,
+               "tpch_q11_p5": 1,
                }
