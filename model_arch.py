@@ -9,7 +9,7 @@ import functools, os
 import numpy as np
 import json
 
-from train_utils import *
+from dataset.tpch_dataset.tpch_utils import *
 
 basic = 3
 # this is from examining the tpch output
