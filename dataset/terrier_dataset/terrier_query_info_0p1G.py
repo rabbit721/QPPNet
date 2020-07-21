@@ -13,7 +13,7 @@ _Q1_P2 = [(OpUnit.AGG_ITERATE, [4, 92, 10, 4]),
           ]
 
 _Q1_P3 = [(OpUnit.SORT_ITERATE, [4, 92, 10, 4]),
-          (OpUnit.OUTPUT, [4, 92, 10, 0]),
+          (OpUnit.OUTPUT, [4, 92, 10, 0])
           ]
 
 _Q4_P1 = [(OpUnit.SEQ_SCAN, [150000, 24, 3, 100]),
@@ -25,7 +25,7 @@ _Q4_P2 = [(OpUnit.SEQ_SCAN, [600000, 12, 3, 100]),
           (OpUnit.OP_INTEGER_COMPARE, [600000, 4, 1, 600000]),
           (OpUnit.HASHJOIN_PROBE, [366000, 4, 1, 5357]),
           (OpUnit.AGG_BUILD, [5357, 16, 1, 5]),
-          (OpUnit.OP_INTEGER_PLUS_OR_MINUS, [5357, 4, 1, 5357]),
+          (OpUnit.OP_INTEGER_PLUS_OR_MINUS, [5357, 4, 1, 5357])
           ]
 
 _Q4_P3 = [(OpUnit.AGG_ITERATE, [5, 20, 2,  5]),
@@ -33,32 +33,32 @@ _Q4_P3 = [(OpUnit.AGG_ITERATE, [5, 20, 2,  5]),
           ]
 
 _Q4_P4 = [(OpUnit.SORT_ITERATE, [5, 20, 2, 5]),
-          (OpUnit.OUTPUT, [5, 20, 2, 0]),
+          (OpUnit.OUTPUT, [5, 20, 2, 0])
           ]
 
 _Q5_P1 = [(OpUnit.SEQ_SCAN, [5, 16, 2, 5]),
           (OpUnit.OP_INTEGER_COMPARE, [5, 4, 1, 5]),
-          (OpUnit.HASHJOIN_BUILD, [1, 4, 1, 1]),
+          (OpUnit.HASHJOIN_BUILD, [1, 4, 1, 1])
           ]
 
 _Q5_P2 = [(OpUnit.SEQ_SCAN, [25, 24, 3, 25]),
           (OpUnit.HASHJOIN_PROBE, [25, 4, 1, 5]),
-          (OpUnit.HASHJOIN_BUILD, [5, 4, 1, 5]),
+          (OpUnit.HASHJOIN_BUILD, [5, 4, 1, 5])
           ]
 
 _Q5_P3 = [(OpUnit.SEQ_SCAN, [15000, 8, 2, 15000]),
           (OpUnit.HASHJOIN_PROBE, [15000, 4, 1, 35000]),
-          (OpUnit.HASHJOIN_BUILD, [35000, 4, 1, 35000]),
+          (OpUnit.HASHJOIN_BUILD, [35000, 4, 1, 35000])
           ]
 
 _Q5_P4 = [(OpUnit.SEQ_SCAN, [150000, 12, 3, 150000]),
           (OpUnit.OP_INTEGER_COMPARE, [300000, 4, 1, 300000]),
           (OpUnit.HASHJOIN_PROBE, [150000, 4, 1, 65000]),
-          (OpUnit.HASHJOIN_BUILD, [65000, 4, 1, 65000]),
+          (OpUnit.HASHJOIN_BUILD, [65000, 4, 1, 65000])
           ]
 
 _Q5_P5 = [(OpUnit.SEQ_SCAN, [1000, 8, 2, 1000]),
-          (OpUnit.HASHJOIN_BUILD, [1000, 8, 2, 1000]),
+          (OpUnit.HASHJOIN_BUILD, [1000, 8, 2, 1000])
           ]
 
 _Q5_P6 = [(OpUnit.SEQ_SCAN, [600000, 24, 4, 600000]),

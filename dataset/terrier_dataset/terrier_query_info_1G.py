@@ -33,7 +33,7 @@ _Q4_P3 = [(OpUnit.AGG_ITERATE, [5, 20, 2,  5]),
           ]
 
 _Q4_P4 = [(OpUnit.SORT_ITERATE, [5, 20, 2, 5]),
-          (OpUnit.OUTPUT, [5, 20, 2, 0]),
+          (OpUnit.OUTPUT, [5, 20, 2, 0])
           ]
 
 _Q5_P1 = [(OpUnit.SEQ_SCAN, [5, 16, 2, 5]),
@@ -66,15 +66,15 @@ _Q5_P6 = [(OpUnit.SEQ_SCAN, [6000000, 24, 4, 6000000]),
           (OpUnit.HASHJOIN_PROBE, [1200000, 4, 1, 400000]),
           (OpUnit.AGG_BUILD, [400000, 16, 1, 5]),
           (OpUnit.OP_DECIMAL_MULTIPLY, [400000, 4, 1, 400000]),
-          (OpUnit.OP_DECIMAL_PLUS_OR_MINUS, [800000, 4, 1, 800000]),
+          (OpUnit.OP_DECIMAL_PLUS_OR_MINUS, [800000, 4, 1, 800000])
           ]
 
 _Q5_P7 = [(OpUnit.AGG_ITERATE, [5, 20, 2, 5]),
-          (OpUnit.SORT_BUILD, [5, 8, 1, 5]),
+          (OpUnit.SORT_BUILD, [5, 8, 1, 5])
           ]
 
 _Q5_P8 = [(OpUnit.SORT_ITERATE, [5, 20, 2, 5]),
-          (OpUnit.OUTPUT, [5, 20, 2, 0]),
+          (OpUnit.OUTPUT, [5, 20, 2, 0])
           ]
 
 _Q6_P1 = [(OpUnit.SEQ_SCAN, [6000000, 24, 4, 6000000]),
@@ -82,7 +82,7 @@ _Q6_P1 = [(OpUnit.SEQ_SCAN, [6000000, 24, 4, 6000000]),
           (OpUnit.OP_INTEGER_COMPARE, [12000000, 4, 1, 12000000]),
           (OpUnit.OP_DECIMAL_MULTIPLY, [42850, 4, 1, 42850]),
           (OpUnit.OP_DECIMAL_PLUS_OR_MINUS, [42850, 4, 1, 42850]),
-          (OpUnit.OUTPUT, [1, 8, 1, 0]),
+          (OpUnit.OUTPUT, [1, 8, 1, 0])
           ]
 
 _Q7_P1 = [(OpUnit.SEQ_SCAN, [25, 20, 2, 25]),

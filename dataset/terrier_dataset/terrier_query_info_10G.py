@@ -33,7 +33,7 @@ _Q4_P3 = [(OpUnit.AGG_ITERATE, [5, 20, 2,  5]),
           ]
 
 _Q4_P4 = [(OpUnit.SORT_ITERATE, [5, 20, 2, 5]),
-          (OpUnit.OUTPUT, [5, 20, 2, 0]),
+          (OpUnit.OUTPUT, [5, 20, 2, 0])
           ]
 
 _Q5_P1 = [(OpUnit.SEQ_SCAN, [5, 16, 2, 5]),

@@ -238,7 +238,7 @@ class QPPNet():
             if self.dataset == "TPCH":
                 epsilon = torch.finfo(pred_time.dtype).eps
             else:
-                epsilon = 0.01
+                epsilon = 0.001
 
             # if idx == 6:
             #     print("feat_vec", samp_dict["feat_vec"])
@@ -246,7 +246,7 @@ class QPPNet():
                 tt = torch.from_numpy(samp_dict['total_time']).to(self.device)
 
                 test_loss.append(torch.abs(tt - pred_time))
-                curr_pred_err = torch.abs(tt - pred_time)/(tt+epsilon)
+                curr_pred_err = (torch.abs(tt - pred_time)+epsilon)/(tt+epsilon)
                 pred_err.append(curr_pred_err)
                 # if idx == 6 or \
 
@@ -256,15 +256,20 @@ class QPPNet():
                     print("feat_vec", samp_dict['feat_vec'])
                     print("pred_time", pred_time)
                     print("total_time", tt)
+
+                rq_vec, _ = torch.max(
+                    torch.cat([((tt+epsilon)/(pred_time+epsilon)).unsqueeze(0),
+                               ((pred_time+epsilon)/(tt+epsilon)).unsqueeze(0)], axis=0),
+                    axis=0)
+                # print(rq_vec.shape)
+                curr_rq = torch.mean(rq_vec).item()
                 if epoch % 50 == 0:
                     print("####### eval by temp: idx {}, test_loss {}, pred_err {}, "\
                       "rq {} ".format(idx, torch.mean(torch.abs(tt - pred_time)).item(),
                               torch.mean(curr_pred_err).item(),
-                              torch.max(torch.cat([(tt+epsilon)/(pred_time+epsilon),
-                                                   (pred_time+epsilon)/(tt+epsilon)])).item()))
+                              curr_rq))
 
-                self.rq = max(torch.max(torch.cat([(tt+epsilon)/(pred_time+epsilon),
-                                                   (pred_time+epsilon)/(tt+epsilon)])).item(), self.rq)
+                self.rq = max(curr_rq, self.rq)
                 # if self.rq == 5300.5:
                 #     print("feat_vec", samp_dict['feat_vec'])
 

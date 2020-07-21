@@ -1,6 +1,6 @@
 import numpy as np
 import collections, os, json, pickle
-from attr_rel_dict import *
+from dataset.tpch_dataset.attr_rel_dict import *
 import pickle
 
 # need a huge array
