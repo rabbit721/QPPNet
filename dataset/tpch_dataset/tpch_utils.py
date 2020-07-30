@@ -10,6 +10,18 @@ max_num_attr = 16
 num_index = 23
 SCALE = 100
 
+# basic input:
+# plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
+
+# Sort: sort key [one-hot 128], sort method [one-hot 2];                             2 + 3 = 5
+# Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
+# Hash Join: Join type [one-hot 5], parent relationship [one-hot 3];                 8 + 3 = 11
+# Scan: relation name [one-hot ?]; attr min, med, max; [use one-hot instead]         4 + 3 = 7
+# Index Scan: never seen one; (Skip)
+# Bitmap Heap Scan: 8 + 48 + 3 = 59
+# Aggregate: Strategy [one-hot 3], partial mode, operator (ignored)                  4 + 3 = 7
+
+
 with open('attr_val_dict.pickle', 'rb') as f:
     attr_val_dict = pickle.load(f)
 
@@ -281,11 +293,11 @@ class TPCHDataSet():
                 counter += 1
                 enum.append(idx)
                 string_hash.append(string)
-        #print(string_hash, counter)
+        # print(string_hash, counter)
         assert(counter>0)
         return enum, counter
 
-    def get_input(self, data, i): # Helper for sample_data
+    def get_input(self, data, i='dum'): # Helper for sample_data
         """
         Parameter: data is a list of plan_dict; all entry is from the same
         query template and thus have the same query plan;
@@ -312,7 +324,7 @@ class TPCHDataSet():
         child_plan_lst = []
         if 'Plans' in data[0]:
             for i in range(len(data[0]['Plans'])):
-                child_plan_dict = self.get_input([jss['Plans'][i] for jss in data], 'dum')
+                child_plan_dict = self.get_input([jss['Plans'][i] for jss in data])
                 child_plan_lst.append(child_plan_dict)
 
         #print(i, [d["Node Type"] for d in data], feat_vec)
