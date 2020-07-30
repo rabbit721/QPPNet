@@ -1,0 +1,9 @@
+30 SELECT * FROM ACCOUNTS WHERE name = $1
+31 SELECT bal FROM SAVINGS WHERE custid = $1
+32 SELECT bal FROM CHECKING WHERE custid = $1
+33 UPDATE CHECKING   SET bal = bal - $1  WHERE custid = $2
+34 UPDATE SAVINGS   SET bal = bal - $1  WHERE custid = $2
+35 SELECT * FROM ACCOUNTS WHERE custid = $1
+36 UPDATE CHECKING   SET bal = bal + $1  WHERE custid = $2
+37 UPDATE CHECKING   SET bal = 0.0  WHERE custid = $1
+[2020-07-25 05:14:35.148] [network_logger] [info] Server Closed

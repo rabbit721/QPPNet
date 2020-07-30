@@ -2,6 +2,7 @@ import time, torch
 from model_arch import QPPNet
 from dataset.terrier_dataset.terrier_utils import TerrierDataSet
 from dataset.tpch_dataset.tpch_utils import TPCHDataSet
+from dataset.tpcc_dataset.tpcc_utils import TPCCDataSet
 import argparse
 
 
@@ -80,8 +81,10 @@ if __name__ == '__main__':
     data_dir = 'res_by_temp/'
     if opt.dataset == "TPCH":
         dataset = TPCHDataSet(opt)
-    else:
+    elif opt.dataset == "Terrier":
         dataset = TerrierDataSet(opt)
+    else:
+        dataset = TPCCDataSet(opt)
 
     print("dataset_size", dataset.datasize)
     torch.set_default_tensor_type(torch.FloatTensor)

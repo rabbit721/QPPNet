@@ -12,7 +12,7 @@ import json
 from dataset.tpch_dataset.tpch_utils import *
 
 basic = 3
-# this is from examining the tpch output
+# TPCH
 tpch_dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
                  'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
                  'Index Only Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
@@ -25,23 +25,18 @@ tpch_dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
                  'Subquery Scan': 32 + 3,
                  'Materialize': 32 + 3, 'Gather Merge': 32 + 3, 'Gather': 32 + 3}
 
+# Terrier
 with open('dataset/terrier_dataset/input_dim_dict.json', 'r') as f:
     terrier_dim_dict = json.load(f)
 
 with open('./dataset/terrier_dataset/terrier_group_dict.json', 'r') as f:
     pname_group_dict = json.load(f)
 
-# basic input:
-# plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
+# TPCC
+with open('./dataset/tpcc_dataset/tpcc_dim_dict.json', 'r') as f:
+    tpcc_dim_dict = json.load(f)
 
-# Sort: sort key [one-hot 128], sort method [one-hot 2];                             2 + 3 = 5
-# Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
-# Hash Join: Join type [one-hot 5], parent relationship [one-hot 3];                 8 + 3 = 11
-# Scan: relation name [one-hot ?]; attr min, med, max; [use one-hot instead]         4 + 3 = 7
-# Index Scan: never seen one; (Skip)
-# Bitmap Heap Scan: 8 + 48 + 3 = 59
-# Aggregate: Strategy [one-hot 3], partial mode, operator (ignored)                  4 + 3 = 7
-
+# For computing loss
 def squared_diff(output, target):
     return torch.sum((output - target)**2)
 
@@ -52,8 +47,8 @@ def squared_diff(output, target):
 class NeuralUnit(nn.Module):
     """Define a Resnet block"""
 
-    def __init__(self, node_type, dim_dict, num_layers=3, hidden_size=128, output_size=32,
-                 norm_enabled=False):
+    def __init__(self, node_type, dim_dict, num_layers=5, hidden_size=128,
+                 output_size=32, norm_enabled=False):
         """
         Initialize the InternalUnit
         """
@@ -106,8 +101,10 @@ class QPPNet():
 
         if opt.dataset == "TPCH":
             self.dim_dict = tpch_dim_dict
-        else:
+        elif opt.dataset == "Terrier":
             self.dim_dict = terrier_dim_dict
+        else:
+            self.dim_dict = tpcc_dim_dict
 
         self.last_total_loss = None
         self.last_pred_err = None
@@ -145,6 +142,7 @@ class QPPNet():
         self.acc_loss = {operator: [self.dummy] for operator in self.dim_dict}
         self.curr_losses = {operator: 0 for operator in self.dim_dict}
         self.total_loss = None
+        self._test_losses = dict()
 
         if opt.start_epoch > 0 or opt.test_time:
             self.load(opt.start_epoch)
@@ -191,8 +189,11 @@ class QPPNet():
         # pred_time = torch.mean(pred_time, 1)
 
         # if 'scan_lineitem' in samp_batch['real_node_type']:
-        #     print(feat_vec, samp_batch['total_time'], pred_time)
-
+        # print(samp_batch['real_node_type'], feat_vec, samp_batch['total_time'], pred_time)
+        # if samp_batch['node_type'] in ['1.0;2.0;8.0', '4.0;7.0;10.0']:
+        #     print(samp_batch['node_type'], feat_vec, samp_batch['total_time'], pred_time)
+        # if samp_batch['node_type'] in ['5.0;8.0']:
+        #     print(samp_batch['node_type'], feat_vec, samp_batch['total_time'], pred_time)
         cat_res = torch.cat([pred_time] + subplans_time, axis=1)
         #print("cat_res.shape", cat_res.shape)
         pred_time = torch.sum(cat_res, 1)
@@ -223,7 +224,7 @@ class QPPNet():
         # self.input is a list of preprocessed plan_vec_dict
         total_loss = torch.zeros(1).to(self.device)
         total_losses = {operator: [torch.zeros(1).to(self.device)] \
-                                            for operator in self.dim_dict}
+                        for operator in self.dim_dict}
         if self.test:
             test_loss = []
             pred_err = []
@@ -263,6 +264,20 @@ class QPPNet():
                     axis=0)
                 # print(rq_vec.shape)
                 curr_rq = torch.mean(rq_vec).item()
+                if idx in self._test_losses and self._test_losses[idx] == curr_rq:
+                    print(f"^^^^^^^^^^^^^^^^^^{samp_dict['node_type']} ^^^^^^^^^^^^^^^\n",
+                          pred_time, '\n', tt, '\n')
+                          # samp_dict['feat_vec'], '\n')
+                    layer = self.units[samp_dict['node_type']].dense_block[0]
+                    print(type(layer), layer.weight.grad)
+                    # for layer in self.units[samp_dict['node_type']].dense_block:
+                    #     try:
+                    #         print(type(layer), layer.weight.grad)
+                    #     except:
+                    #         assert(isinstance(layer, nn.ReLU) or isinstance(layer, nn.Tanh))
+
+                self._test_losses[idx] = curr_rq
+
                 if epoch % 50 == 0:
                     print("####### eval by temp: idx {}, test_loss {}, pred_err {}, "\
                       "rq {} ".format(idx, torch.mean(torch.abs(tt - pred_time)).item(),
@@ -323,7 +338,11 @@ class QPPNet():
             self.optimizers[operator].step()
             if len(self.schedulers) > 0:
                 self.schedulers[operator].step()
-
+        # for layer in self.units['4.0;7.0;10.0'].dense_block:
+        #     try:
+        #         print(type(layer), layer.weight.grad)
+        #     except:
+        #         assert(isinstance(layer, nn.ReLU) or isinstance(layer, nn.Tanh))
         self.input = self.test_dataset
         self.test = True
         self._forward(epoch)
