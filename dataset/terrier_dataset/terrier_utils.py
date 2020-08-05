@@ -11,7 +11,7 @@ import dataset.terrier_dataset.terrier_query_info_10G as tqi_10
 
 SCALE = 10000
 
-EPS = 0.01
+EPS = 0.001
 TRAIN_TEST_SPLIT = 0.8
 
 def get_input_for_all(SF):
@@ -133,8 +133,15 @@ class TerrierDataSet(TPCHDataSet):
         # print(new_samp_dict['node_type'])
 
         # print(new_samp_dict["real_node_type"],
-        #       feat_vec, self.mean_range_dict[data[0]["Node Type"]][0],
-        #       (feat_vec + EPS) / (self.mean_range_dict[data[0]["Node Type"]][0] + EPS))
+        #       feat_vec, self.mean_range_dict[new_samp_dict["node_type"]][0])
+        # (feat_vec + EPS) / (self.mean_range_dict[data[0]["Node Type"]][0] + EPS))
+
+        for i, jss in enumerate(data):
+            try:
+                assert(jss["Node Type"] == data[0]["Node Type"])
+            except:
+                print(jss)
+
         feat_vec = (feat_vec + EPS) / (self.mean_range_dict[new_samp_dict["node_type"]][0] + EPS)
         if 'lineitem' in new_samp_dict["real_node_type"]:
             feat_vec += np.random.default_rng().normal(loc=0, scale=1, size=feat_vec.shape)

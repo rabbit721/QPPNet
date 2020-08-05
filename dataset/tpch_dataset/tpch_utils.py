@@ -22,7 +22,7 @@ SCALE = 100
 # Aggregate: Strategy [one-hot 3], partial mode, operator (ignored)                  4 + 3 = 7
 
 
-with open('attr_val_dict.pickle', 'rb') as f:
+with open('dataset/tpch_dataset/attr_val_dict.pickle', 'rb') as f:
     attr_val_dict = pickle.load(f)
 
 # need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
@@ -272,30 +272,43 @@ class TPCHDataSet():
         # jss is a list of json-transformed dicts, one for each query
         return jss
 
-    def grouping(self, data):
-        def hash(plan_dict):
-            res = plan_dict['Node Type']
-            if 'Plans' in plan_dict:
-                for chld in plan_dict['Plans']:
-                    res += hash(chld)
-            return res
-        counter = 0
-        string_hash = []
-        enum = []
-        for plan_dict in data:
-            string = hash(plan_dict)
-            #print(string)
-            try:
-                idx = string_hash.index(string)
-                enum.append(idx)
-            except:
-                idx = counter
-                counter += 1
-                enum.append(idx)
-                string_hash.append(string)
-        # print(string_hash, counter)
-        assert(counter>0)
-        return enum, counter
+def grouping(self, data):
+    def hash(plan_dict):
+        res = plan_dict['Node Type']
+        if 'Plans' in plan_dict:
+            for chld in plan_dict['Plans']:
+                res += hash(chld)
+        return res
+    counter = 0
+    string_hash = []
+    enum = []
+    for plan_dict in data:
+        string = hash(plan_dict)
+        #print(string)
+        try:
+            idx = string_hash.index(string)
+            enum.append(idx)
+        except:
+            idx = counter
+            counter += 1
+            enum.append(idx)
+            string_hash.append(string)
+    # print(string_hash, counter)
+    assert(counter>0)
+    return enum, counter
+
+def grouping(self, data):
+    counter = 0
+    string_hash = {}
+    enum = []
+    for plan_dict in data:
+        string = hash(plan_dict)
+        if string in string_hash:
+            if plan_dict['Node Name'] not in string_hash[string]:
+                string_hash[string].append(plan_dict['Node Name'])
+        else:
+            string_hash[string] = [plan_dict['Node Name']]
+    return string_hash
 
     def get_input(self, data, i='dum'): # Helper for sample_data
         """
