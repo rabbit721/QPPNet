@@ -1,8 +1,9 @@
+import torch
 
 class Metric:
 
     @staticmethod
-    def r_q(cls, tt, pred_time, epsilon):
+    def r_q(tt, pred_time, epsilon):
         """
             returns R(q) test loss defined in the QPP paper
         """
@@ -15,7 +16,7 @@ class Metric:
         return curr_rq
 
     @staticmethod
-    def pred_err(cls, tt, pred_time, epsilon):
+    def pred_err(tt, pred_time, epsilon):
         """
             returns a vector of pred_err for each samples in the input
         """
@@ -23,13 +24,13 @@ class Metric:
         return curr_pred_err
 
     @staticmethod
-    def accumulate_err(cls, tt, pred_time, epsilon):
+    def accumulate_err(tt, pred_time, epsilon):
         tt_sum = torch.sum(tt)
         pred_time_sum = torch.sum(pred_time)
         return torch.abs(pred_time_sum - tt_sum + epsilon) / (tt_sum + epsilon)
 
     @staticmethod
-    def mean_mae(cls, tt, pred_time, epsilon):
+    def mean_mae(tt, pred_time, epsilon):
         tt_mean = torch.mean(tt)
         pred_time_mean = torch.mean(pred_time)
         return torch.abs(pred_time_mean - tt_mean + epsilon) / (tt_mean + epsilon)
