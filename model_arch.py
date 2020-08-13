@@ -10,6 +10,7 @@ import numpy as np
 import json
 
 from dataset.tpch_dataset.tpch_utils import *
+from metric import Metric
 
 basic = 3
 # TPCH
@@ -229,17 +230,22 @@ class QPPNet():
             test_loss = []
             pred_err = []
 
+        all_tt, all_pred_time = None, None
+
+        if self.dataset == "TPCH":
+            epsilon = torch.finfo(pred_time.dtype).eps
+        else:
+            epsilon = 0.001
+
+        data_size = 0
+        total_mean_mae = torch.zeros(1).to(self.device)
         for idx, samp_dict in enumerate(self.input):
             # first clear prev computed losses
             del self.acc_loss
             self.acc_loss = {operator: [self.dummy] for operator in self.dim_dict}
 
             _, pred_time = self._forward_oneQ_batch(samp_dict)
-
-            if self.dataset == "TPCH":
-                epsilon = torch.finfo(pred_time.dtype).eps
-            else:
-                epsilon = 0.001
+            data_size += len(samp_dict['total_time'])
 
             # if idx == 6:
             #     print("feat_vec", samp_dict["feat_vec"])
@@ -247,7 +253,7 @@ class QPPNet():
                 tt = torch.from_numpy(samp_dict['total_time']).to(self.device)
 
                 test_loss.append(torch.abs(tt - pred_time))
-                curr_pred_err = (torch.abs(tt - pred_time)+epsilon)/(tt+epsilon)
+                curr_pred_err = Metric.pred_err(tt, pred_time, epsilon)
                 pred_err.append(curr_pred_err)
                 # if idx == 6 or \
 
@@ -258,35 +264,34 @@ class QPPNet():
                     print("pred_time", pred_time)
                     print("total_time", tt)
 
-                rq_vec, _ = torch.max(
-                    torch.cat([((tt+epsilon)/(pred_time+epsilon)).unsqueeze(0),
-                               ((pred_time+epsilon)/(tt+epsilon)).unsqueeze(0)], axis=0),
-                    axis=0)
-                # print(rq_vec.shape)
-                curr_rq = torch.mean(rq_vec).item()
-                if idx in self._test_losses and self._test_losses[idx] == curr_rq:
-                    print(f"^^^^^^^^^^^^^^^^^^{samp_dict['node_type']} ^^^^^^^^^^^^^^^\n",
-                          pred_time, '\n', tt, '\n')
-                          # samp_dict['feat_vec'], '\n')
-                    layer = self.units[samp_dict['node_type']].dense_block[0]
-                    print(type(layer), layer.weight.grad)
+                all_tt = tt if all_tt is not None else torch.cat([tt, all_tt])
+                all_pred_time = pred_time if all_pred_time is not None \
+                                else torch.cat([pred_time, all_pred_time])
+
+                # if idx in self._test_losses and self._test_losses[idx] == curr_rq:
+                #     print(f"^^^^^^^^^^^^^^^^^^{samp_dict['node_type']} ^^^^^^^^^^^^^^^\n",
+                #           pred_time, '\n', tt, '\n')
+                #           # samp_dict['feat_vec'], '\n')
+                #     layer = self.units[samp_dict['node_type']].dense_block[0]
+                #     print(type(layer), layer.weight.grad)
                     # for layer in self.units[samp_dict['node_type']].dense_block:
                     #     try:
                     #         print(type(layer), layer.weight.grad)
                     #     except:
                     #         assert(isinstance(layer, nn.ReLU) or isinstance(layer, nn.Tanh))
 
-                self._test_losses[idx] = curr_rq
+                # self._test_losses[idx] = curr_rq
+                curr_rq = Metric.r_q(tt, pred_time, epsilon)
+                # if epoch % 50 == 0:
 
-                if epoch % 50 == 0:
-                    print("####### eval by temp: idx {}, test_loss {}, pred_err {}, "\
-                      "rq {} ".format(idx, torch.mean(torch.abs(tt - pred_time)).item(),
-                              torch.mean(curr_pred_err).item(),
-                              curr_rq))
-
-                self.rq = max(curr_rq, self.rq)
-                # if self.rq == 5300.5:
-                #     print("feat_vec", samp_dict['feat_vec'])
+                curr_mean_mae = Metric.mean_mae(tt, pred_time, epsilon)
+                total_mean_mae += curr_mean_mae * len(tt)
+                print("####### eval by temp: idx {}, test_loss {}, pred_err {}, "\
+                  "rq {}, weighted mae {}, accumulate_err {} "\
+                  .format(idx, torch.mean(torch.abs(tt - pred_time)).item(),
+                          torch.mean(curr_pred_err).item(),
+                          curr_rq, curr_mean_mae,
+                          Metric.accumulate_err(tt, pred_time, epsilon)))
 
             D_size = 0
             subbatch_loss = torch.zeros(1).to(self.device)
@@ -303,6 +308,7 @@ class QPPNet():
             #print("subbatch_loss.shape",subbatch_loss.shape)
             total_loss += subbatch_loss * samp_dict['subbatch_size']
 
+
         if self.test:
             all_test_loss = torch.cat(test_loss)
             #print(test_loss[0].shape, test_loss[1].shape, all_test_loss.shape)
@@ -311,6 +317,18 @@ class QPPNet():
 
             all_pred_err = torch.cat(pred_err)
             self.pred_err = torch.mean(all_pred_err)
+
+            self.rq = Metric.r_q(all_tt, all_pred_time, epsilon)
+            self.accumulate_err = Metric.accumulate_err(all_tt, all_pred_time,
+                                                        epsilon)
+            self.weighted_mae = total_mean_mae / data_size
+
+            if epoch % 50 == 0:
+                print("test batch R(q): {}, Accumulated Error: "\
+                      "{}, Weighted MAE: {}".format(self.rq,
+                                                    self.accumulate_err,
+                                                    self.weighted_mae))
+
         else:
             self.curr_losses = {operator: torch.mean(torch.cat(total_losses[operator])).item() for operator in self.dim_dict}
             self.total_loss = torch.mean(total_loss / self.batch_size)
