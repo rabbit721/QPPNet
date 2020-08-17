@@ -10,18 +10,6 @@ max_num_attr = 16
 num_index = 23
 SCALE = 100
 
-# basic input:
-# plan_width, plan_rows, plan_buffers (ignored), estimated_ios (ignored), total_cost  3
-
-# Sort: sort key [one-hot 128], sort method [one-hot 2];                             2 + 3 = 5
-# Hash: Hash buckets, hash algos [one-hot] (ignored);                                1 + 3 = 4
-# Hash Join: Join type [one-hot 5], parent relationship [one-hot 3];                 8 + 3 = 11
-# Scan: relation name [one-hot ?]; attr min, med, max; [use one-hot instead]         4 + 3 = 7
-# Index Scan: never seen one; (Skip)
-# Bitmap Heap Scan: 8 + 48 + 3 = 59
-# Aggregate: Strategy [one-hot 3], partial mode, operator (ignored)                  4 + 3 = 7
-
-
 with open('dataset/tpch_dataset/attr_val_dict.pickle', 'rb') as f:
     attr_val_dict = pickle.load(f)
 
@@ -159,6 +147,13 @@ TPCH_GET_INPUT = collections.defaultdict(lambda: get_basics, TPCH_GET_INPUT)
 
 class TPCHDataSet():
     def __init__(self, opt):
+        """
+            Initialize the dataset by parsing the data files.
+            Perform train test split and normalize each feature using mean and max of the train dataset.
+
+            self.dataset is the train dataset
+            self.test_dataset is the test dataset
+        """
         self.num_sample_per_q = int(opt.num_sample_per_q * 0.9)
         self.batch_size = opt.batch_size
         self.num_q = opt.num_q
@@ -176,7 +171,6 @@ class TPCHDataSet():
         self.num_grps = [0] * self.num_q
         for i, fname in enumerate(fnames):
             temp_data = self.get_all_plans(opt.data_dir + fname)
-            #print(temp_data)
             data += temp_data[:self.num_sample_per_q]
 
             ##### this is for train #####
@@ -191,11 +185,9 @@ class TPCHDataSet():
                 groups[grp_idx].append(temp_data[self.num_sample_per_q+j])
             all_groups_test += groups
 
-            #print(num_grp)
-
         self.dataset = data
         self.datasize = len(self.dataset)
-        print(self.num_grps)
+        print("Number of groups per query: ", self.num_grps)
 
         if not opt.test_time:
             self.mean_range_dict = self.normalize()
@@ -212,6 +204,14 @@ class TPCHDataSet():
         self.test_dataset = test_dataset
 
     def normalize(self): # compute the mean and std vec of each operator
+        """
+            For each operator, normalize each input feature to have a mean of 0 and maximum of 1
+
+            Returns:
+            - mean_range_dict: a dictionary where the keys are the Operator Names and the values are 2-tuples (mean_vec, max_vec):
+                -- mean_vec : a vector of mean values for input features of this operator
+                -- max_vec  : a vector of max values for input features of this operator
+        """
         feat_vec_col = {operator : [] for operator in all_dicts}
 
         def parse_input(data):
@@ -236,19 +236,27 @@ class TPCHDataSet():
                 print('i: {}'.format(i))
 
         def cmp_mean_range(feat_vec_lst):
-          if len(feat_vec_lst) == 0:
-            return (0, 1)
-          else:
-            total_vec = np.concatenate(feat_vec_lst)
-            return (np.mean(total_vec, axis=0),
-                    np.max(total_vec, axis=0)+np.finfo(np.float32).eps)
+            if len(feat_vec_lst) == 0:
+                return (0, 1)
+            else:
+                total_vec = np.concatenate(feat_vec_lst)
+                return (np.mean(total_vec, axis=0),
+                        np.max(total_vec, axis=0)+np.finfo(np.float32).eps)
 
         mean_range_dict = {operator : cmp_mean_range(feat_vec_col[operator]) \
                            for operator in all_dicts}
         return mean_range_dict
 
-
     def get_all_plans(self, fname):
+        """
+            Parse from data file
+
+            Args:
+            - fname: the name of data file to be parsed
+
+            Returns:
+            - jss: a sanitized list of dictionary, one per query, parsed from the input data file
+        """
         jsonstrs = []
         curr = ""
         prev = None
@@ -266,13 +274,23 @@ class TPCHDataSet():
                     curr = ""
                 prevprev = prev
                 prev = newrow
-        #print(prevprev, prev)
+
         strings = [s for s in jsonstrs if s[-1] == ']']
         jss = [json.loads(s)[0]['Plan'] for s in strings]
         # jss is a list of json-transformed dicts, one for each query
         return jss
 
     def grouping(self, data):
+        """
+            Groups the queries by their query plan structure
+
+            Args:
+            - data: a list of dictionaries, each being a query from the dataset
+
+            Returns:
+            - enum    : a list of same length as data, containing the group indexes for each query in data
+            - counter : number of distinct groups/templates
+        """
         def hash(plan_dict):
             res = plan_dict['Node Type']
             if 'Plans' in plan_dict:
@@ -293,21 +311,29 @@ class TPCHDataSet():
                 counter += 1
                 enum.append(idx)
                 string_hash.append(string)
-        # print(string_hash, counter)
+        print(f"{counter} distinct templates identified")
+        print(f"Operators: {string_hash}")
         assert(counter>0)
         return enum, counter
 
     def get_input(self, data, i='dum'): # Helper for sample_data
         """
-        Parameter: data is a list of plan_dict; all entry is from the same
-        query template and thus have the same query plan;
+            Vectorize the input of a list of queries that have the same plan structure (of the same template/group)
 
-        Returns: a single plan dict of similar structure, where each node has
-            node_type     ---- a string, same as before
-            feat_vec      ---- numpy array of size (batch_size x feat_size)
-            children_plan ---- a list of children's plan_dicts where each plan_dict
-                               has feat_vec encompassing that child in all
-                               co-plans
+            Args:
+            - data: a list of plan_dict, each plan_dict correspond to a query plan in the dataset;
+                    requires that all plan_dicts is of the same query template/group
+
+            Returns:
+            - new_samp_dict: a dictionary, where each level has the following attribute:
+                -- node_type     : name of the operator
+                -- subbatch_size : number of queries in data
+                -- feat_vec      : a numpy array of shape (batch_size x feat_dim) that's
+                                   the vectorized inputs for all queries in data
+                -- children_plan : list of dictionaries with each being an output of
+                                   a recursive call to get_input on a child of current node
+                -- total_time    : a vector of prediction target for each query in data
+                -- is_subplan    : if the queries are subplans
         """
         new_samp_dict = {}
         new_samp_dict["node_type"] = data[0]["Node Type"]
@@ -327,7 +353,6 @@ class TPCHDataSet():
                 child_plan_dict = self.get_input([jss['Plans'][i] for jss in data])
                 child_plan_lst.append(child_plan_dict)
 
-        #print(i, [d["Node Type"] for d in data], feat_vec)
         new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
         new_samp_dict["children_plan"] = child_plan_lst
         new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / self.SCALE
@@ -342,9 +367,16 @@ class TPCHDataSet():
     #       Sampling subbatch data from the dataset; total size is batch_size     #
     ###############################################################################
     def sample_data(self):
+        """
+            Randomly sample a batch of data points from the train dataset
+
+            Returns:
+            - parsed_input: a list of dictionaries with inputs vectorized by get_input,
+                            each dictionary contains all samples in the batch that comes from this group
+        """
         # dataset: all queries used in training
         samp = np.random.choice(np.arange(self.datasize), self.batch_size, replace=False)
-        #print(samp)
+
         samp_group = [[[] for j in range(self.num_grps[i])]
                                 for i in range(self.num_q)]
         for idx in samp:
@@ -356,5 +388,5 @@ class TPCHDataSet():
             for grp in temp:
                 if len(grp) != 0:
                     parsed_input.append(self.get_input(grp, i))
-        #print(parsed_input)
+
         return parsed_input

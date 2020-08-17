@@ -79,16 +79,23 @@ class TPCCDataSet(TPCHDataSet):
 
     def get_input(self, data): # Helper for sample_data
         """
-        Parameter: data is a list of plan_dict; all entry is from the same
-        query template and thus have the same query plan;
+            Vectorize the input of a list of plan_dicts that have the same query plan structure structure (of the same template/group)
 
-        Returns: a single plan dict of similar structure, where each node has
-            node_type      ----
-            real_node_type ---- operator type
-            feat_vec       ---- numpy array of size (batch_size x feat_size)
-            children_plan  ---- a list of children's plan_dicts where each plan_dict
-                               has feat_vec encompassing that child in all
-                               co-plans
+            Args:
+            - data: a list of plan_dict, each plan_dict correspond to a query plan in the dataset;
+                    requires that all plan_dicts is of the same query template/group
+
+            Returns:
+            - new_samp_dict: a dictionary, where each level has the following attribute:
+                -- node_type      : name of the operator that the pipeline corresponds to
+                -- real_node_type : the pipeline name
+                -- subbatch_size  : number of queries in data
+                -- feat_vec       : a numpy array of shape (batch_size x feat_dim) that's
+                                   the vectorized inputs for all queries in data
+                -- children_plan  : list of dictionaries with each being an output of
+                                   a recursive call to get_input on a child of current node
+                -- total_time     : a vector of prediction target for each query in data
+                -- is_subplan     : if the queries are subplans; defined only if the input query plans have children
         """
         new_samp_dict = {}
 
@@ -99,16 +106,8 @@ class TPCCDataSet(TPCHDataSet):
         feat_vec = np.array([jss['Feature Vec'] for jss in data])
 
         # normalize feat_vec
-        # feat_vec = (feat_vec -
-        #             self.mean_range_dict[new_samp_dict["node_type"]][0] + EPS) \
-        #             / (self.mean_range_dict[new_samp_dict["node_type"]][1] + EPS)
         feat_vec = (feat_vec + EPS) / (self.mean_range_dict[new_samp_dict["node_type"]][0] + EPS)
         feat_vec += np.random.default_rng().normal(loc=0, scale=0.1, size=feat_vec.shape)
-        # if i == 6:
-        #     # print(torch.normal(mean=torch.zeros(feat_vec.shape),
-        #     #                    std=torch.ones(feat_vec.shape)))
-        #     # print(np.random.default_rng().normal(loc=0, scale=0.05, size=feat_vec.shape))
-        #     print(feat_vec)
 
         total_time = [jss['Actual Total Time'] for jss in data]
         child_plan_lst = []
@@ -118,7 +117,6 @@ class TPCCDataSet(TPCHDataSet):
                 child_plan_dict['is_subplan'] = False
                 child_plan_lst.append(child_plan_dict)
 
-        #print(i, [d["Node Type"] for d in data], feat_vec)
         new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
         new_samp_dict["children_plan"] = child_plan_lst
         new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / SCALE
@@ -130,7 +128,7 @@ class TPCCDataSet(TPCHDataSet):
 
         def parse_input(data):
             feat_vec = [jss['Feature Vec'] for jss in data]
-            # print(feat_vec)
+
             if 'Plans' in data[0]:
                 for i in range(len(data[0]['Plans'])):
                     parse_input([jss['Plans'][i] for jss in data])
@@ -181,7 +179,7 @@ class TPCCDataSet(TPCHDataSet):
 
             # sort by operator index in list of ALL_OPS
             all_feats = all_feats[all_feats[:, 0].argsort()]
-            # print(all_feats)
+
             real_node_type = ";".join([str(idx) for idx in all_feats[:, 0].tolist()])
             feat_vec = all_feats[:, 1:].reshape(-1).tolist()
 
@@ -200,7 +198,7 @@ class TPCCDataSet(TPCHDataSet):
     def sample_data(self):
         # self.dataset: all queries used in training
         samp = np.random.choice(np.arange(self.datasize), self.batch_size, replace=False)
-        #print(samp)
+
         samp_group = [[] for j in range(self.num_grps[0])]
         for idx in samp:
             grp_idx = self.grp_idxes[idx]
@@ -208,10 +206,10 @@ class TPCCDataSet(TPCHDataSet):
 
         parsed_input = []
         for i, grp in enumerate(samp_group):
-            # print(grp)
+
             if len(grp) != 0:
                 parsed_input.append(self.get_input(grp))
-        # print([i for i, grp in enumerate(samp_group) if len(grp) != 0])
+
         return parsed_input
 
     def evaluate(self):
@@ -227,5 +225,4 @@ class TPCCDataSet(TPCHDataSet):
             if len(grp) != 0:
                 parsed_input.append(self.get_input(grp))
 
-        #print(parsed_input)
         return parsed_input

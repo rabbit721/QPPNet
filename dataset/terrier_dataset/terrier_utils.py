@@ -80,7 +80,10 @@ class TerrierDataSet(TPCHDataSet):
         train_data = []
         train_groups = [[] for j in range(num_grp)]
         test_groups = [[] for j in range(num_grp)]
-        print(all_samp_num, self.num_sample_per_q)
+
+        print(f"# of samples per query used: {all_samp_num}",
+              f"# of training samples per query used: {self.num_sample_per_q}")
+
         counter = 0
         for idx, grp in enumerate(all_groups):
             train_data += grp[:self.num_sample_per_q]
@@ -91,7 +94,8 @@ class TerrierDataSet(TPCHDataSet):
 
         self.num_grps = [num_grp]
 
-        print([len(grp) for grp in train_groups])
+        print("Number of samples per train groups: ",
+              [len(grp) for grp in train_groups])
 
         self.dataset = train_data
         self.datasize = len(self.dataset)
@@ -104,23 +108,29 @@ class TerrierDataSet(TPCHDataSet):
             with open(opt.mean_range_dict, 'rb') as f:
                 self.mean_range_dict = pickle.load(f)
 
-        print(self.mean_range_dict)
-
         test_dataset = [self.get_input(grp) for grp in test_groups]
         self.test_dataset = test_dataset
         self.all_dataset = [self.get_input(grp) for grp in all_groups]
 
     def get_input(self, data): # Helper for sample_data
         """
-        Parameter: data is a list of plan_dict; all entry is from the same
-        query template and thus have the same query plan;
+            Vectorize the input of a list of plan_dicts that have the same query plan structure structure (of the same template/group)
 
-        Returns: a single plan dict of similar structure, where each node has
-            node_type     ---- a string, same as before
-            feat_vec      ---- numpy array of size (batch_size x feat_size)
-            children_plan ---- a list of children's plan_dicts where each plan_dict
-                               has feat_vec encompassing that child in all
-                               co-plans
+            Args:
+            - data: a list of plan_dict, each plan_dict correspond to a query plan in the dataset;
+                    requires that all plan_dicts is of the same query template/group
+
+            Returns:
+            - new_samp_dict: a dictionary, where each level has the following attribute:
+                -- node_type      : name of the operator that the pipeline corresponds to
+                -- real_node_type : the pipeline name
+                -- subbatch_size  : number of queries in data
+                -- feat_vec       : a numpy array of shape (batch_size x feat_dim) that's
+                                   the vectorized inputs for all queries in data
+                -- children_plan  : list of dictionaries with each being an output of
+                                   a recursive call to get_input on a child of current node
+                -- total_time     : a vector of prediction target for each query in data
+                -- is_subplan     : if the queries are subplans
         """
         new_samp_dict = {}
 
@@ -128,30 +138,13 @@ class TerrierDataSet(TPCHDataSet):
         new_samp_dict["real_node_type"] = data[0]["Node Type"]
         new_samp_dict["subbatch_size"] = len(data)
         feat_vec = np.array([self.input_func[jss["Node Type"]](jss) for jss in data])
-        # print(feat_vec)
-        # normalize feat_vec
-        # print(new_samp_dict['node_type'])
-
-        # print(new_samp_dict["real_node_type"],
-        #       feat_vec, self.mean_range_dict[new_samp_dict["node_type"]][0])
-        # (feat_vec + EPS) / (self.mean_range_dict[data[0]["Node Type"]][0] + EPS))
-
-        for i, jss in enumerate(data):
-            try:
-                assert(jss["Node Type"] == data[0]["Node Type"])
-            except:
-                print(jss)
 
         feat_vec = (feat_vec + EPS) / (self.mean_range_dict[new_samp_dict["node_type"]][0] + EPS)
         if 'lineitem' in new_samp_dict["real_node_type"]:
             feat_vec += np.random.default_rng().normal(loc=0, scale=1, size=feat_vec.shape)
         else:
             feat_vec += np.random.default_rng().normal(loc=0, scale=0.1, size=feat_vec.shape)
-        # if i == 6:
-        #     # print(torch.normal(mean=torch.zeros(feat_vec.shape),
-        #     #                    std=torch.ones(feat_vec.shape)))
-        #     # print(np.random.default_rng().normal(loc=0, scale=0.05, size=feat_vec.shape))
-        #     print(feat_vec)
+
 
         total_time = [jss['Actual Total Time'] for jss in data]
         child_plan_lst = []
@@ -161,7 +154,6 @@ class TerrierDataSet(TPCHDataSet):
                 child_plan_dict['is_subplan'] = False
                 child_plan_lst.append(child_plan_dict)
 
-        #print(i, [d["Node Type"] for d in data], feat_vec)
         new_samp_dict["feat_vec"] = np.array(feat_vec).astype(np.float32)
         new_samp_dict["children_plan"] = child_plan_lst
         new_samp_dict["total_time"] = np.array(total_time).astype(np.float32) / SCALE
@@ -234,8 +226,8 @@ class TerrierDataSet(TPCHDataSet):
                 enum.append(counter)
                 unique.append(grp_num)
                 counter += 1
-        print(counter)
-        print(unique)
+        print(f"{counter} distinct templates identified")
+        print(f"Operators: {unique}")
         return enum, counter
 
     ###############################################################################
@@ -244,7 +236,7 @@ class TerrierDataSet(TPCHDataSet):
     def sample_data(self):
         # dataset: all queries used in training
         samp = np.random.choice(np.arange(self.datasize), self.batch_size, replace=False)
-        #print(samp)
+
         samp_group = [[] for j in range(self.num_grps[0])]
         for idx in samp:
             grp_idx = self.grp_idxes[idx]
@@ -252,25 +244,6 @@ class TerrierDataSet(TPCHDataSet):
 
         parsed_input = []
         for i, grp in enumerate(samp_group):
-            # print(grp)
             if len(grp) != 0:
                 parsed_input.append(self.get_input(grp))
-        #print(parsed_input)
-        return parsed_input
-
-    def evaluate(self):
-        # dataset: all queries used in training
-        samp = np.random.choice(np.arange(self.datasize), self.batch_size, replace=False)
-        #print(samp)
-        samp_group = [[] for j in range(self.num_grps[0])]
-        for idx in samp:
-            grp_idx = self.grp_idxes[idx]
-            samp_group[grp_idx].append(self.dataset[idx])
-
-        parsed_input = []
-        for i, grp in enumerate(samp_group):
-            # print(grp)
-            if len(grp) != 0:
-                parsed_input.append(self.get_input(grp))
-        #print(parsed_input)
         return parsed_input
