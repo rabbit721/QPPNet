@@ -1,7 +1,9 @@
 import torch
 
 class Metric:
-
+    """
+        Metric class
+    """
     @staticmethod
     def r_q(tt, pred_time, epsilon):
         """
@@ -18,19 +20,25 @@ class Metric:
     @staticmethod
     def pred_err(tt, pred_time, epsilon):
         """
-            returns a vector of pred_err for each samples in the input
+            returns a vector of pred_err for each sample in the input
         """
         curr_pred_err = (torch.abs(tt - pred_time) + epsilon) / (tt + epsilon)
         return curr_pred_err
 
     @staticmethod
     def accumulate_err(tt, pred_time, epsilon):
+        """
+            returns the pred_err for the sum of predictions
+        """
         tt_sum = torch.sum(tt)
         pred_time_sum = torch.sum(pred_time)
         return torch.abs(pred_time_sum - tt_sum + epsilon) / (tt_sum + epsilon)
 
     @staticmethod
     def mean_mae(tt, pred_time, epsilon):
+        """
+            returns the absolute error for the mean of predictions
+        """
         tt_mean = torch.mean(tt)
         pred_time_mean = torch.mean(pred_time)
-        return torch.abs(pred_time_mean - tt_mean + epsilon) / (tt_mean + epsilon)
+        return torch.abs(pred_time_mean - tt_mean)

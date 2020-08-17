@@ -1,4 +1,0 @@
-query_id, pipeline_id, exec_mode, num_features, features, est_output_rows, key_sizes, num_keys, est_cardinalities, mem_factor, num_iterations, start_time, cpu_id, cpu_cycles, instructions, cache_ref, cache_miss, ref_cpu_cycles_, block_read, block_write, memory_b, elapsed_us
-9, 0, 0, 3, OUTPUT;OP_INTEGER_COMPARE;IDX_SCAN, 1;3;33928, 40;4;12, 3;1;3, 1;3;1, 1;1;1, 0;0;0, 1595669047822904, 2, 77042, 11409, 1231, 687, 24, 0, 0, 0, 43
-10, 0, 0, 3, OUTPUT;OP_INTEGER_COMPARE;IDX_SCAN, 1;1;8358, 8;4;4, 1;1;1, 1;1;1, 1;1;1, 0;0;0, 1595669047828443, 2, 33581, 7518, 1082, 149, 10, 0, 0, 0, 16
-11, 0, 0, 3, OUTPUT;OP_INTEGER_COMPARE;IDX_SCAN, 1;2;7841, 12;4;8, 2;1;2, 1;2;1, 1;1;1, 0;0;0, 1595669047829098, 2, 32547, 9836, 1117, 73, 10, 0, 0, 0, 18
