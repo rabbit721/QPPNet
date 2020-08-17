@@ -31,14 +31,11 @@ class TPCCDataSet(TPCHDataSet):
         print(" \n".join([str(ent) for ent in all_data[:10]]))
         enum, num_grp = self.grouping(all_data)
 
-        num_grp -= 1
         count = Counter(enum)
         print(count)
 
         all_groups = [[] for j in range(num_grp)]
         for j, grp_idx in enumerate(enum):
-            if grp_idx == 10:
-                continue
             all_groups[grp_idx].append(all_data[j])
 
         self.grp_idxes = []
@@ -47,9 +44,7 @@ class TPCCDataSet(TPCHDataSet):
         test_groups = [[] for j in range(num_grp)]
 
         for idx, grp in enumerate(all_groups):
-            if idx == 10:
-                continue
-            all_samp_num = min(len(grp), 300)
+            all_samp_num = len(grp)
             num_sample_per_q = int(all_samp_num * TRAIN_TEST_SPLIT)
             train_data += grp[:num_sample_per_q]
             train_groups[idx] += grp[:num_sample_per_q]
