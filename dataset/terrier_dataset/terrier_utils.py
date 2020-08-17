@@ -1,4 +1,4 @@
-import collections, pickle
+import collections
 import pickle
 import json
 import numpy as np
