@@ -1,0 +1,11 @@
+name: qppnet
+channels:
+- pytorch
+- defaults
+dependencies:
+- python=3.7
+- pip:
+  - matplotlib==3.2.2
+  - numpy==1.18.5
+  - scipy==1.4.1
+  - torch==1.2.0
