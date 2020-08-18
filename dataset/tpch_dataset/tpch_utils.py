@@ -154,9 +154,9 @@ class TPCHDataSet():
             self.dataset is the train dataset
             self.test_dataset is the test dataset
         """
-        self.num_sample_per_q = int(opt.num_sample_per_q * 0.9)
+        self.num_sample_per_q = int(900 * 0.9)
         self.batch_size = opt.batch_size
-        self.num_q = opt.num_q
+        self.num_q = 22
         self.SCALE = SCALE
 
         self.input_func = TPCH_GET_INPUT
