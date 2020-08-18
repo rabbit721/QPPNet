@@ -1,6 +1,6 @@
 # QPPNet in Pytorch
 
-This code contains a sample implementation for Plan-Structured Deep Neural Network Models for Query Performance Prediction(https://arxiv.org/pdf/1902.00132.pdf), written for the purposes of comparison with MB2: Decomposed Behavior Modeling for Self-Driving Database 
+This code contains a sample implementation for Plan-Structured Deep Neural Network Models for Query Performance Prediction(https://arxiv.org/pdf/1902.00132.pdf), written for the purpose of comparison with MB2: Decomposed Behavior Modeling for Self-Driving Database 
 Management Systems on the TPC-H benchmark, the TPC-C benchmark, and our self-generated dataset smallbank.
 
 ## Prerequisites
