@@ -51,7 +51,6 @@ parser.add_argument('-epoch_freq', '--save_latest_epoch_freq', type=int, default
 
 parser.add_argument('-logf', '--logfile', type=str, default='train_loss.txt')
 
-parser.add_argument('--test', action='store_true')
 parser.add_argument('--mean_range_dict', type=str)
 
 def save_opt(opt, logf):
