@@ -89,7 +89,7 @@ class QPPNet():
 
         if opt.dataset == "PSQLTPCH":
             self.dim_dict = tpch_dim_dict
-        elif opt.dataset == "Terrier":
+        elif opt.dataset == "TerrierTPCH":
             self.dim_dict = terrier_dim_dict
         else:
             self.dim_dict = tpcc_dim_dict

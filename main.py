@@ -15,7 +15,7 @@ parser.add_argument('--data_dir', type=str, default='./res_by_temp/',
                     help='Dir containing train data')
 
 parser.add_argument('--dataset', type=str, default='PSQLTPCH',
-                    help='Select dataset [PSQLTPCH | Terrier | OLTP]')
+                    help='Select dataset [PSQLTPCH | TerrierTPCH | OLTP]')
 
 parser.add_argument('--test_time', action='store_true',
                     help='if in testing mode')
@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     if opt.dataset == "PSQLTPCH":
         dataset = PSQLTPCHDataSet(opt)
-    elif opt.dataset == "Terrier":
+    elif opt.dataset == "TerrierTPCH":
         dataset = TerrierTPCHDataSet(opt)
     else:
         dataset = OLTPDataSet(opt)
