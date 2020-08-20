@@ -34,9 +34,9 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
 
   ```
   # Under directory datasets/postgres_tpch_dataset
-  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/postgres/tpch/psqltpch0p1g.zip
-  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/postgres/tpch/psqltpch1g.zip
-  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/postgres/tpch/psqltpch10g.zip
+  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/postgres/tpch/psqltpch0p1g.zip && unzip psqltpch0p1g.zip
+  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/postgres/tpch/psqltpch1g.zip && unzip psqltpch1g.zip
+  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/postgres/tpch/psqltpch10g.zip && unzip psqltpch10g.zip
   ```
 
 - TPC-H benchmarked with Terrier:
