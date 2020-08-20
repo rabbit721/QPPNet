@@ -28,7 +28,7 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
   - For pip: `pip install -r requirements.txt`
   - For conda: `conda env create -f environment.yml`
 
-### Getting the Dataset from the Web Directory
+### Getting the Datasets
 
 - TPC-H benchmarked with PostgresSQL
 
@@ -40,11 +40,11 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
   ```
 
 - TPC-H benchmarked with Terrier:
-  
+
   Data files already located under directory [`datasets/terrier_tpch_dataset`](https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset) as `execution_0p1G.csv`, `execution_1G.csv`, and `execution_10G.csv`
 
 - TPC-C and smallbank benchmarked with Terrier:
-  
+
   Data files already located under directory [`datasets/oltp_dataset`](https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset) as `tpcc_pipeline.csv` and `sb_pipeline.csv`
 
 ### Examples for Training a model
@@ -67,16 +67,36 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
   python3 main.py --dataset OLTP -s 0 -t 250000 --batch_size 512 -epoch_freq 1000 --lr 5e-3 --step_size 1000 --SGD --scheduler --data_dir ./dataset/oltp_dataset/tpcc_pipeline.csv
   ```
 
+### Using a pre-trained model
+
+- Getting a model trained for 4000 epochs on TPC-H SF=1 dataset benchmarked with PostgresSQL:
+
+  ```
+  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/trained_models/psqltpch_epoch4000.zip
+  ```
+
+- Getting a model trained for 20000 epochs on TPC-H SF=1 dataset benchmarked with Terrier:
+
+  ```
+  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/trained_models/terriertpch_epoch20000.zip
+  ```
+
+- Getting a model trained for 10000 epochs on TPC-C dataset generated with OLTP and benchmarked with Terrier:
+
+  ```
+  wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/trained_models/tpcc_epoch10000.zip
+  ```
+
 ### Examples for Testing a trained model
 
-- Testing a model trained on TPC-H SF=1 dataset benchmarked with PostgresSQL for 4000 epochs on TPC-H SF=10 dataset benchmarked with PostgresSQL.
+- Testing a model trained for 4000 epochs on TPC-H SF=1 dataset benchmarked with PostgresSQL on TPC-H SF=10 dataset benchmarked with PostgresSQL.
   Please make sure that models are saved in `./saved_model`
 
   ```
   python3 main.py --test_time --dataset PSQLTPCH -s 4000 --data_dir ./dataset/postgres_tpch_dataset/tpch10G/900-exp_res_by_temp/
   ```
 
-- Testing a model trained on the TPC-C benchmark for 10000 epochs on the smallbank dataset.
+- Testing a model trained for 10000 epochs on the TPC-C benchmark on the smallbank dataset.
   Please make sure that models are saved in `./saved_model`
 
   ```
