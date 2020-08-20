@@ -9,32 +9,19 @@ import functools, os
 import numpy as np
 import json
 
-from dataset.tpch_dataset.tpch_utils import *
 from metric import Metric
 
 basic = 3
+
 # TPCH
-tpch_dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
-                 'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
-                 'Index Only Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
-                 'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3 + 32,
-                 'Bitmap Index Scan': num_index + 3,
-                 'Sort': 128 + 5 + 32,
-                 'Hash': 4 + 32,
-                 'Hash Join': 11 + 32 * 2, 'Merge Join': 11 + 32 * 2,
-                 'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
-                 'Subquery Scan': 32 + 3,
-                 'Materialize': 32 + 3, 'Gather Merge': 32 + 3, 'Gather': 32 + 3}
+from dataset.postgres_tpch_dataset.tpch_utils import tpch_dim_dict
 
 # Terrier
-with open('dataset/terrier_dataset/input_dim_dict.json', 'r') as f:
+with open('dataset/terrier_tpch_dataset/input_dim_dict.json', 'r') as f:
     terrier_dim_dict = json.load(f)
 
-with open('./dataset/terrier_dataset/terrier_group_dict.json', 'r') as f:
-    pname_group_dict = json.load(f)
-
 # TPCC
-with open('./dataset/tpcc_dataset/tpcc_dim_dict.json', 'r') as f:
+with open('./dataset/oltp_dataset/tpcc_dim_dict.json', 'r') as f:
     tpcc_dim_dict = json.load(f)
 
 # For computing loss
@@ -100,7 +87,7 @@ class QPPNet():
         self.batch_size = opt.batch_size
         self.dataset = opt.dataset
 
-        if opt.dataset == "TPCH":
+        if opt.dataset == "PSQLTPCH":
             self.dim_dict = tpch_dim_dict
         elif opt.dataset == "Terrier":
             self.dim_dict = terrier_dim_dict
@@ -234,7 +221,7 @@ class QPPNet():
 
             _, pred_time = self._forward_oneQ_batch(samp_dict)
 
-            if self.dataset == "TPCH":
+            if self.dataset == "PSQLTPCH":
                 epsilon = torch.finfo(pred_time.dtype).eps
             else:
                 epsilon = 0.001

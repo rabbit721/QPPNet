@@ -4,7 +4,7 @@ import json
 import numpy as np
 import torch
 from collections import Counter, defaultdict
-from dataset.tpch_dataset.tpch_utils import TPCHDataSet
+from dataset.postgres_tpch_dataset.tpch_utils import PSQLTPCHDataSet
 
 SCALE = 10
 
@@ -19,7 +19,7 @@ ALL_OPS = ['UPDATE', 'LIMIT', 'SORT_ITERATE', 'OP_DECIMAL_PLUS_OR_MINUS',
 #       Parsing data from csv files that contain json output of queries       #
 ###############################################################################
 
-class TPCCDataSet(TPCHDataSet):
+class OLTPDataSet(PSQLTPCHDataSet):
     def __init__(self, opt):
         self.batch_size = opt.batch_size
         self.num_q = 1

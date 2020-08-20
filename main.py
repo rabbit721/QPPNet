@@ -1,8 +1,8 @@
 import time, torch
 from model_arch import QPPNet
-from dataset.terrier_dataset.terrier_utils import TerrierDataSet
-from dataset.tpch_dataset.tpch_utils import TPCHDataSet
-from dataset.tpcc_dataset.tpcc_utils import TPCCDataSet
+from dataset.terrier_tpch_dataset.terrier_utils import TerrierTPCHDataSet
+from dataset.postgres_tpch_dataset.tpch_utils import PSQLTPCHDataSet
+from dataset.oltp_dataset.oltp_utils import OLTPDataSet
 import argparse
 
 
@@ -14,8 +14,8 @@ parser = argparse.ArgumentParser(description='QPPNet Arg Parser')
 parser.add_argument('--data_dir', type=str, default='./res_by_temp/',
                     help='Dir containing train data')
 
-parser.add_argument('--dataset', type=str, default='TPCH',
-                    help='Select dataset [TPCH | Terrier]')
+parser.add_argument('--dataset', type=str, default='PSQLTPCH',
+                    help='Select dataset [PSQLTPCH | Terrier | OLTP]')
 
 parser.add_argument('--test_time', action='store_true',
                     help='if in testing mode')
@@ -74,12 +74,12 @@ def save_opt(opt, logf):
 if __name__ == '__main__':
     opt = parser.parse_args()
 
-    if opt.dataset == "TPCH":
-        dataset = TPCHDataSet(opt)
+    if opt.dataset == "PSQLTPCH":
+        dataset = PSQLTPCHDataSet(opt)
     elif opt.dataset == "Terrier":
-        dataset = TerrierDataSet(opt)
+        dataset = TerrierTPCHDataSet(opt)
     else:
-        dataset = TPCCDataSet(opt)
+        dataset = OLTPDataSet(opt)
 
     print("dataset_size", dataset.datasize)
     torch.set_default_tensor_type(torch.FloatTensor)

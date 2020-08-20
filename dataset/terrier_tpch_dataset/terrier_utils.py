@@ -4,10 +4,10 @@ import json
 import numpy as np
 import torch
 from collections import Counter
-from dataset.tpch_dataset.tpch_utils import TPCHDataSet
-import dataset.terrier_dataset.terrier_query_info_1G as tqi_1
-import dataset.terrier_dataset.terrier_query_info_0p1G as tqi_0p1
-import dataset.terrier_dataset.terrier_query_info_10G as tqi_10
+from dataset.postgres_tpch_dataset.tpch_utils import PSQLTPCHDataSet
+import dataset.terrier_tpch_dataset.terrier_query_info_1G as tqi_1
+import dataset.terrier_tpch_dataset.terrier_query_info_0p1G as tqi_0p1
+import dataset.terrier_tpch_dataset.terrier_query_info_10G as tqi_10
 
 SCALE = 10000
 
@@ -34,10 +34,10 @@ def get_input_for_all(SF):
         return feat_vec
     return get_input
 
-with open('./dataset/terrier_dataset/terrier_group_dict.json', 'r') as f:
+with open('./dataset/terrier_tpch_dataset/terrier_group_dict.json', 'r') as f:
     pname_group_dict = json.load(f)
 
-with open('dataset/terrier_dataset/input_dim_dict.json', 'r') as f:
+with open('dataset/terrier_tpch_dataset/input_dim_dict.json', 'r') as f:
     terrier_dim_dict = json.load(f)
 
 def get_input_func(data_dir):
@@ -55,7 +55,7 @@ def get_input_func(data_dir):
 #       Parsing data from csv files that contain json output of queries       #
 ###############################################################################
 
-class TerrierDataSet(TPCHDataSet):
+class TerrierTPCHDataSet(PSQLTPCHDataSet):
     def __init__(self, opt):
         self.batch_size = opt.batch_size
         self.num_q = 1

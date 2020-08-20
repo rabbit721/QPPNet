@@ -1,16 +1,26 @@
 import numpy as np
 import collections, os, json, pickle
-from dataset.tpch_dataset.attr_rel_dict import *
+from dataset.postgres_tpch_dataset.attr_rel_dict import *
 import pickle
 
-# need a huge array
-# get the columns of all relations
 num_rel = 8
 max_num_attr = 16
 num_index = 23
 SCALE = 100
 
-with open('dataset/tpch_dataset/attr_val_dict.pickle', 'rb') as f:
+tpch_dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
+                 'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
+                 'Index Only Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
+                 'Bitmap Heap Scan': num_rel + max_num_attr * 3 + 3 + 32,
+                 'Bitmap Index Scan': num_index + 3,
+                 'Sort': 128 + 5 + 32,
+                 'Hash': 4 + 32,
+                 'Hash Join': 11 + 32 * 2, 'Merge Join': 11 + 32 * 2,
+                 'Aggregate': 7 + 32, 'Nested Loop': 32 * 2 + 3, 'Limit': 32 + 3,
+                 'Subquery Scan': 32 + 3,
+                 'Materialize': 32 + 3, 'Gather Merge': 32 + 3, 'Gather': 32 + 3}
+
+with open('dataset/postgres_tpch_dataset/attr_val_dict.pickle', 'rb') as f:
     attr_val_dict = pickle.load(f)
 
 # need to normalize Plan Width, Plan Rows, Total Cost, Hash Bucket
@@ -145,7 +155,7 @@ TPCH_GET_INPUT = collections.defaultdict(lambda: get_basics, TPCH_GET_INPUT)
 #       Parsing data from csv files that contain json output of queries       #
 ###############################################################################
 
-class TPCHDataSet():
+class PSQLTPCHDataSet():
     def __init__(self, opt):
         """
             Initialize the dataset by parsing the data files.
@@ -170,7 +180,7 @@ class TPCHDataSet():
         self.grp_idxes = []
         self.num_grps = [0] * self.num_q
         for i, fname in enumerate(fnames):
-            temp_data = self.get_all_plans(opt.data_dir + fname)
+            temp_data = self.get_all_plans(opt.data_dir + '/' + fname)
             data += temp_data[:self.num_sample_per_q]
 
             ##### this is for train #####
@@ -311,8 +321,8 @@ class TPCHDataSet():
                 counter += 1
                 enum.append(idx)
                 string_hash.append(string)
-        print(f"{counter} distinct templates identified")
-        print(f"Operators: {string_hash}")
+        # print(f"{counter} distinct templates identified")
+        # print(f"Operators: {string_hash}")
         assert(counter>0)
         return enum, counter
 

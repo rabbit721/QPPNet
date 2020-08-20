@@ -1,4 +1,4 @@
-from dataset.terrier_dataset.type import OpUnit
+from dataset.terrier_tpch_dataset.type import OpUnit
 
 _Q1_P1 = [(OpUnit.SEQ_SCAN, [60000000, 48, 7, 60000000]),
           (OpUnit.OP_INTEGER_COMPARE, [60000000, 4, 1, 60000000]),
