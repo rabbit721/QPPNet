@@ -1,12 +1,12 @@
 # QPPNet in Pytorch
 
-This code contains a sample implementation for Plan-Structured Deep Neural Network Models for Query Performance Prediction(https://arxiv.org/pdf/1902.00132.pdf), and the code for training/testing on
+This code contains a sample implementation for Plan-Structured Deep Neural Network Models for Query Performance Prediction[https://arxiv.org/pdf/1902.00132.pdf], and the code for training/testing on
 
 - TPC-H queries generated using https://github.com/gregrahn/tpch-kit.git and benchmarked with Postgres
 
 - TPC-H queries generated using https://github.com/gregrahn/tpch-kit.git and benchmarked with Terrier
 
-- TPC-C queries and smallbank dataset generated using OLTP(https://github.com/oltpbenchmark/oltpbench) and benchmarked with Terrier(https://github.com/cmu-db/terrier).
+- TPC-C queries and smallbank dataset generated using OLTP[https://github.com/oltpbenchmark/oltpbench] and benchmarked with Terrier[https://github.com/cmu-db/terrier].
 
 ## Prerequisites
 
@@ -40,10 +40,10 @@ This code contains a sample implementation for Plan-Structured Deep Neural Netwo
   ```
 
 - TPC-H benchmarked with Terrier
-  Data files already located under directory `datasets/terrier_tpch_dataset`(https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset) as `execution_0p1G.csv`, `execution_1G.csv`, and `execution_10G.csv`
+  Data files already located under directory `datasets/terrier_tpch_dataset`[https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset] as `execution_0p1G.csv`, `execution_1G.csv`, and `execution_10G.csv`
 
 - TPC-C and smallbank benchmarked with Terrier
-  Data files already located under directory `datasets/oltp_dataset`(https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset) as `tpcc_pipeline.csv` and `sb_pipeline.csv`
+  Data files already located under directory `datasets/oltp_dataset`[https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset] as `tpcc_pipeline.csv` and `sb_pipeline.csv`
 
 ### Examples for Training a model
 
