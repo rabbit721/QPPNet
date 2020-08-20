@@ -61,14 +61,14 @@ This code contains a sample implementation for Plan-Structured Deep Neural Netwo
 
 ### Examples for Testing a trained model
 
-- Testing a model trained on TPC-H benchmark (SF=1) dataset for 4000 epochs on TPC-H benchmark (SF=10) dataset
+- Testing a model trained on TPC-H benchmark (SF=1) dataset for 4000 epochs on TPC-H benchmark (SF=10) dataset.
   Please make sure that models are saved in `./saved_model`
 
   ```
   python3 main.py --test_time --dataset TPCH -s 4000 --data_dir ./dataset/tpch_dataset/tpch10G/900-exp_res_by_temp/
   ```
 
-- Testing a model trained on the TPC-C benchmark for 10000 epochs on the smallbank dataset
+- Testing a model trained on the TPC-C benchmark for 10000 epochs on the smallbank dataset.
   Please make sure that models are saved in `./saved_model`
 
   ```
