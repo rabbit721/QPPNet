@@ -12,9 +12,9 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
 
   The query plan structure and query performance metrics are retrieved as json objects by running the generated queries above with the `explain (analyze, format JSON, verbose)` statement prepended.
 
-- TPC-H queries generated using https://github.com/gregrahn/tpch-kit.git and benchmarked with [Terrier](https://github.com/cmu-db/terrier)
+- TPC-H queries generated using https://github.com/gregrahn/tpch-kit.git and benchmarked with [NoisePage](https://github.com/cmu-db/terrier)
 
-- TPC-C queries and smallbank dataset generated using [OLTP](https://github.com/oltpbenchmark/oltpbench) and benchmarked with [Terrier](https://github.com/cmu-db/terrier)
+- TPC-C queries and smallbank dataset generated using [OLTP](https://github.com/oltpbenchmark/oltpbench) and benchmarked with [NoisePage](https://github.com/cmu-db/terrier)
 
 ## Prerequisites
 
@@ -47,11 +47,11 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
   wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/postgres/tpch/psqltpch10g.zip && unzip psqltpch10g.zip
   ```
 
-- TPC-H benchmarked with Terrier:
+- TPC-H benchmarked with NoisePage:
 
   Data files already located under directory [`datasets/terrier_tpch_dataset`](https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset) as `execution_0p1G.csv`, `execution_1G.csv`, and `execution_10G.csv`
 
-- TPC-C and smallbank benchmarked with Terrier:
+- TPC-C and smallbank benchmarked with NoisePage:
 
   Data files already located under directory [`datasets/oltp_dataset`](https://github.com/rabbit721/QPPNet/tree/master/dataset/terrier_tpch_dataset) as `tpcc_pipeline.csv` and `sb_pipeline.csv`
 
@@ -63,13 +63,13 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
   python3 main.py --dataset PSQLTPCH -s 0 -t 250000 --batch_size 128 -epoch_freq 1000 --lr 2e-3 --step_size 1000 --SGD --scheduler --data_dir ./dataset/postgres_tpch_dataset/tpch1g/900-exp_res_by_temp/ --num_q 22 --num_sample_per_q 900
   ```
 
-- On TPC-H dataset generated using https://github.com/gregrahn/tpch-kit.git with SF=1 and benchmarked with Terrier
+- On TPC-H dataset generated using https://github.com/gregrahn/tpch-kit.git with SF=1 and benchmarked with NoisePage
 
   ```
   python3 main.py --dataset TerrierTPCH -s 0 -t 250000 --batch_size 512 -epoch_freq 1000 --lr 1e-3 --step_size 1000 --SGD --scheduler --data_dir ./dataset/terrier_dataset/execution_1G.csv
   ```
 
-- On TPC-C dataset generated using OLTP with SF=1 and benchmarked with Terrier
+- On TPC-C dataset generated using OLTP with SF=1 and benchmarked with NoisePage
 
   ```
   python3 main.py --dataset OLTP -s 0 -t 250000 --batch_size 512 -epoch_freq 1000 --lr 5e-3 --step_size 1000 --SGD --scheduler --data_dir ./dataset/oltp_dataset/tpcc_pipeline.csv
@@ -83,13 +83,13 @@ This code contains a sample implementation for [Plan-Structured Deep Neural Netw
   wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/trained_models/psqltpch_epoch4000.zip
   ```
 
-- Getting a model trained for 20000 epochs on TPC-H SF=1 dataset benchmarked with Terrier:
+- Getting a model trained for 20000 epochs on TPC-H SF=1 dataset benchmarked with NoisePage:
 
   ```
   wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/trained_models/terriertpch_epoch20000.zip
   ```
 
-- Getting a model trained for 10000 epochs on TPC-C dataset generated with OLTP and benchmarked with Terrier:
+- Getting a model trained for 10000 epochs on TPC-C dataset generated with OLTP and benchmarked with NoisePage:
 
   ```
   wget http://www.andrew.cmu.edu/user/jiejiao/data/qpp/trained_models/tpcc_epoch10000.zip
