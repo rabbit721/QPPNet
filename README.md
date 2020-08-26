@@ -1,12 +1,20 @@
-# QPPNet in Pytorch
+# QPPNet in PyTorch
 
-This code contains a sample implementation for [Plan-Structured Deep Neural Network Models for Query Performance Prediction](https://arxiv.org/pdf/1902.00132.pdf), and the code for training/testing on
+This code contains a sample implementation for [Plan-Structured Deep Neural Network Models for Query Performance Prediction](https://arxiv.org/pdf/1902.00132.pdf) presented at VLDB 2019, and the code for training/testing on
 
 - TPC-H queries generated using https://github.com/gregrahn/tpch-kit.git and benchmarked with Postgres
 
-- TPC-H queries generated using https://github.com/gregrahn/tpch-kit.git and benchmarked with Terrier
+  The TPC-H data are generated with `./dbgen -s <scale factor>`.
 
-- TPC-C queries and smallbank dataset generated using [OLTP](https://github.com/oltpbenchmark/oltpbench) and benchmarked with [Terrier](https://github.com/cmu-db/terrier).
+  The TPC-H queries are generated using `./qgen <query_id> -r <seed number> ` where varying seed random number is used to generate different queries from a template.
+
+  Tables in PostgresSQL are created with the queries in [dss.ddl](https://github.com/gregrahn/tpch-kit/blob/master/dbgen/dss.ddl) and then have indexes created with [tpch-postgres-index-ddl.sql](https://github.com/oltpbenchmark/oltpbench/blob/master/src/com/oltpbenchmark/benchmarks/tpch/ddls/tpch-postgres-index-ddl.sql).
+
+  The query plan structure and query performance metrics are retrieved as json objects by running the generated queries above with the `explain (analyze, format JSON, verbose)` statement prepended.
+
+- TPC-H queries generated using https://github.com/gregrahn/tpch-kit.git and benchmarked with [Terrier](https://github.com/cmu-db/terrier)
+
+- TPC-C queries and smallbank dataset generated using [OLTP](https://github.com/oltpbenchmark/oltpbench) and benchmarked with [Terrier](https://github.com/cmu-db/terrier)
 
 ## Prerequisites
 
