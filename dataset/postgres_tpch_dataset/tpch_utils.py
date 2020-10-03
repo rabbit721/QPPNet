@@ -7,6 +7,9 @@ num_rel = 8
 max_num_attr = 16
 num_index = 23
 SCALE = 100
+num_per_q = 900
+
+TRAIN_TEST_SPLIT = 0.8
 
 tpch_dim_dict = {'Seq Scan': num_rel + max_num_attr * 3 + 3 ,
                  'Index Scan': num_index + num_rel + max_num_attr * 3 + 3 + 1,
@@ -164,7 +167,7 @@ class PSQLTPCHDataSet():
             self.dataset is the train dataset
             self.test_dataset is the test dataset
         """
-        self.num_sample_per_q = int(900 * 0.9)
+        self.num_sample_per_q = int(num_per_q * TRAIN_TEST_SPLIT)
         self.batch_size = opt.batch_size
         self.num_q = 22
         self.SCALE = SCALE
@@ -175,25 +178,30 @@ class PSQLTPCHDataSet():
                         key=lambda fname: int(fname.split('temp')[1][:-4]))
 
         data = []
-        all_groups_test = []
+        all_groups, all_groups_test = [], []
 
         self.grp_idxes = []
         self.num_grps = [0] * self.num_q
         for i, fname in enumerate(fnames):
             temp_data = self.get_all_plans(opt.data_dir + '/' + fname)
-            data += temp_data[:self.num_sample_per_q]
+
+            ##### this is for all samples for this query template #####
+            enum, num_grp = self.grouping(temp_data)
+            groups = [[] for _ in range(num_grp)]
+            for j, grp_idx in enumerate(enum):
+                groups[grp_idx].append(temp_data[j])
+            all_groups += groups
 
             ##### this is for train #####
-            enum, num_grp = self.grouping(temp_data[:self.num_sample_per_q])
-            self.grp_idxes += enum
+            self.grp_idxes += enum[:self.num_sample_per_q]
             self.num_grps[i] = num_grp
+            data += temp_data[:self.num_sample_per_q]
 
             ##### this is for test #####
-            enum, num_grp = self.grouping(temp_data[self.num_sample_per_q:])
-            groups = [[] for j in range(num_grp)]
-            for j, grp_idx in enumerate(enum):
-                groups[grp_idx].append(temp_data[self.num_sample_per_q+j])
-            all_groups_test += groups
+            test_groups = [[] for _ in range(num_grp)]
+            for j, grp_idx in enumerate(enum[self.num_sample_per_q:]):
+                test_groups[grp_idx].append(temp_data[self.num_sample_per_q+j])
+            all_groups_test += test_groups
 
         self.dataset = data
         self.datasize = len(self.dataset)
@@ -210,8 +218,8 @@ class PSQLTPCHDataSet():
 
         print(self.mean_range_dict)
 
-        test_dataset = [self.get_input(grp, 'dum') for grp in all_groups_test]
-        self.test_dataset = test_dataset
+        self.test_dataset = [self.get_input(grp) for grp in all_groups_test]
+        self.all_dataset = [self.get_input(grp) for grp in all_groups]
 
     def normalize(self): # compute the mean and std vec of each operator
         """
@@ -326,7 +334,7 @@ class PSQLTPCHDataSet():
         assert(counter>0)
         return enum, counter
 
-    def get_input(self, data, i='dum'): # Helper for sample_data
+    def get_input(self, data): # Helper for sample_data
         """
             Vectorize the input of a list of queries that have the same plan structure (of the same template/group)
 
@@ -397,6 +405,6 @@ class PSQLTPCHDataSet():
         for i, temp in enumerate(samp_group):
             for grp in temp:
                 if len(grp) != 0:
-                    parsed_input.append(self.get_input(grp, i))
+                    parsed_input.append(self.get_input(grp))
 
         return parsed_input
