@@ -307,8 +307,9 @@ class QPPNet():
             self.weighted_mae = total_mean_mae / data_size
 
             if epoch % 50 == 0:
-                print("test batch R(q): {}, Accumulated Error: "\
-                      "{}, Weighted MAE: {}".format(self.rq,
+                print("test batch Pred Err: {}, R(q): {}, Accumulated Error: "\
+                      "{}, Weighted MAE: {}".format(self.pred_err, 
+                                                    self.rq,
                                                     self.accumulate_err,
                                                     self.weighted_mae))
 
