@@ -146,14 +146,14 @@ class QPPNet():
 
         return output_vec, where 1st col is predicted time
         '''
-        #print(samp_batch)
+        # print(samp_batch)
         feat_vec = samp_batch['feat_vec']
         # print(samp_batch['real_node_type'])
 
         # print(samp_batch['node_type'])
         # print(feat_vec.shape, print(samp_batch['children_plan']))
         input_vec = torch.from_numpy(feat_vec).to(self.device)
-        #print(samp_batch['node_type'], input_vec)
+        # print(samp_batch['node_type'], input_vec)
         subplans_time = []
         for child_plan_dict in samp_batch['children_plan']:
             child_output_vec, _ = self._forward_oneQ_batch(child_plan_dict)
@@ -176,15 +176,16 @@ class QPPNet():
         # pred_time assumed to be the first col
 
         cat_res = torch.cat([pred_time] + subplans_time, axis=1)
-        #print("cat_res.shape", cat_res.shape)
+        # print("cat_res.shape", cat_res.shape)
         pred_time = torch.sum(cat_res, 1)
-        #print("pred_time.shape", pred_time.shape)
-        if self.test_time:
-            print(samp_batch['node_type'], pred_time, samp_batch['total_time'])
+        # print("pred_time.shape", pred_time.shape)
+
+        # if self.test_time:
+        #     print(samp_batch['node_type'], pred_time, samp_batch['total_time'])
 
         loss = (pred_time -
                 torch.from_numpy(samp_batch['total_time']).to(self.device)) ** 2
-        #print("loss.shape", loss.shape)
+        # print("loss.shape", loss.shape)
         self.acc_loss[samp_batch['node_type']].append(loss)
 
         # added to deal with NaN
